@@ -2,6 +2,10 @@
 module regfile(
     input wire clk,
     input wire rst,
+    //写端口
+    input wire we,
+    input wire [4:0] waddr,
+    input wire [31:0] wdata,
     //读端口1
     input wire re1,
     input wire [4:0] raddr1,
@@ -9,15 +13,12 @@ module regfile(
     //读端口2
     input wire re2,
     input wire [4:0] raddr2,
-    output reg [31:0] rdata2,
-    //写端口
-    input wire we,
-    input wire [4:0] waddr,
-    input wire [31:0] wdata
+    output reg [31:0] rdata2
 );
+
     reg [31:0] reg_array [31:0];//32个32位寄存器
 
-    // write
+    // 写端口的操作
     always @ (posedge clk) begin
         if(rst == `RstDisable)begin
           if (we && waddr!=5'b0) begin
@@ -26,7 +27,7 @@ module regfile(
         end
     end
 
-    // read out 1
+    // 读端口1
     always @( *) begin
         if(rst == `RstEnable || raddr1 ==5'b0)begin
           rdata1 <= `zeroword;//复位或空地址则读出空数据
@@ -39,7 +40,7 @@ module regfile(
         end
     end
 
-    // read out2
+    // 读端口2
     always @( *) begin
         if(rst == `RstEnable || raddr2 ==5'b0)begin
           rdata2 <= `zeroword;//复位或空地址则读出空数据

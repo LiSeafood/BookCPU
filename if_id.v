@@ -11,6 +11,7 @@ module if_id(
     output reg[`InstAddrBus] id_pc,
     output reg[`InstBus]     id_inst
 );
+
     always @(posedge clk) begin
         if(rst)begin
           id_pc<=`zeroword;//复位时pc为0

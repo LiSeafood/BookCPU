@@ -6,6 +6,7 @@ module IF(
     output reg[`InstAddrBus]    pc,
     output reg                  ce
 );
+
     always @ (posedge clk) begin
         if (rst) begin
             pc <= 32'h00000000;//复位时pc为0
