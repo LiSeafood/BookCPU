@@ -1,28 +1,3 @@
-//除法div
-`define DivFree 2'b00
-`define DivByZero 2'b01
-`define DivOn 2'b10
-`define DivEnd 2'b11
-`define DivResultReady 1'b1
-`define DivResultNotReady 1'b0
-`define DivStart 1'b1
-`define DivStop 1'b0
-
-//CP0¼Ä´æÆ÷µØÖ·
-`define CP0_REG_COUNT    5'b01001        //¿É¶ÁÐ´
-`define CP0_REG_COMPARE    5'b01011      //¿É¶ÁÐ´
-`define CP0_REG_STATUS    5'b01100       //¿É¶ÁÐ´
-`define CP0_REG_CAUSE    5'b01101        //Ö»¶Á
-`define CP0_REG_EPC    5'b01110          //¿É¶ÁÐ´
-`define CP0_REG_PrId    5'b01111         //Ö»¶Á
-`define CP0_REG_CONFIG    5'b10000       //Ö»¶Á
-
-//wishbone×ÜÏßµÄ×´Ì¬»ú
-`define WB_IDLE 2'b00
-`define WB_BUSY 2'b01
-`define WB_WAIT_FOR_FLUSHING 2'b10
-`define WB_WAIT_FOR_STALL 2'b11
-
 //*******************全局的宏定义*******************
 `define RstEnable   1'b1            //复位信号有效
 `define RstDisable  1'b0            //复位信号无效
@@ -285,3 +260,29 @@
 `define RegNum      32//通用寄存器的数量
 `define RegNumLog2  5//寻址通用寄存器使用的地址位数
 `define NOPRegAddr  5 'b00000
+
+//除法div
+`define DivFree 2'b00
+`define DivByZero 2'b01
+`define DivOn 2'b10
+`define DivEnd 2'b11
+`define DivResultReady 1'b1
+`define DivResultNotReady 1'b0
+`define DivStart 1'b1
+`define DivStop 1'b0
+
+//CP0¼Ä´æÆ÷µØÖ·
+`define CP0_REG_COUNT    5'b01001        //¿É¶ÁÐ´
+`define CP0_REG_COMPARE    5'b01011      //¿É¶ÁÐ´
+`define CP0_REG_STATUS    5'b01100       //¿É¶ÁÐ´
+`define CP0_REG_CAUSE    5'b01101        //Ö»¶Á
+`define CP0_REG_EPC    5'b01110          //¿É¶ÁÐ´
+`define CP0_REG_PrId    5'b01111         //Ö»¶Á
+`define CP0_REG_CONFIG    5'b10000       //Ö»¶Á
+
+//wishbone×ÜÏßµÄ×´Ì¬»ú
+`define WB_IDLE 2'b00
+`define WB_BUSY 2'b01
+`define WB_WAIT_FOR_FLUSHING 2'b10
+`define WB_WAIT_FOR_STALL 2'b11
+
