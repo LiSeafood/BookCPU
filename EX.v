@@ -4,7 +4,7 @@ module EX(
 
     //id_ex段送来的信息
     input  wire [`AluOpBus] aluop,
-    input  wire [`AluOpBus] alusel,
+    input  wire [`AluSelBus] alusel,
     input  wire [`RegBus]   reg1,
     input  wire [`RegBus]   reg2,
     input  wire [`RegAddrBus]   w_addr_i,

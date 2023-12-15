@@ -9,7 +9,7 @@ module IF(
 
     always @ (posedge clk) begin
         if (rst) begin
-            pc <= 32'h00000000;//复位时pc为0
+            pc <= 32'hbfbf_fffc;//复位时pc这个值，再+4就会变成0
         end else begin
             pc <= pc + 4'h4;//pc每周期+4
         end

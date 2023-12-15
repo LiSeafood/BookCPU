@@ -18,7 +18,7 @@ module regfile(
 );
 
     reg [31:0] reg_array [31:0];//32个32位寄存器
-
+    initial reg_array [32'h0]=32'h0;
     // 写端口的操作
     always @ (posedge clk) begin
         if(rst == `RstDisable)begin
