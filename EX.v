@@ -13,7 +13,7 @@ module EX(
     //EX段的执行结果
     output reg we_o,//执行指令最终是否要写
     output reg [`RegAddrBus]    w_addr_o,//执行指令最终要写入的寄存器地址
-    output reg [`RegBus]    w_data//执行指令最终要写的值
+    output reg [`RegBus]    w_data_o//执行指令最终要写的值
 );
 
     reg [`RegBus] logicout;
@@ -40,10 +40,10 @@ module EX(
         we_o<=we_i;
         case(alusel)
           `EXE_RES_LOGIC:begin
-            w_data<=logicout;
+            w_data_o<=logicout;
           end
           default :begin
-            w_data<=`zeroword;
+            w_data_o<=`zeroword;
           end
         endcase
     end

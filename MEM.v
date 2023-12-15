@@ -3,12 +3,12 @@ module MEM(
     input  wire rst,
 
     //来自ex_mem的信息
-    input  wire we_i,
+    input  wire                 we_i,
     input  wire [`RegAddrBus]   w_addr_i,
     input  wire [`RegBus]       w_data_i,
 
     //MEM的结果
-    output reg we_o,
+    output reg                  we_o,
     output reg [`RegAddrBus]    w_addr_o,
     output reg [`RegBus]        w_data_o
 );

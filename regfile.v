@@ -1,4 +1,5 @@
 `include "defines.v"
+//寄存器
 module regfile(
     input wire clk,
     input wire rst,

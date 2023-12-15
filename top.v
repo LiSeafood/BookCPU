@@ -80,8 +80,8 @@ module top(
 	//译码阶段ID模块
 	ID id0(
 		.rst(rst),
-		.pc_i(id_pc_i),
-		.inst_i(id_inst_i),
+		.pc(id_pc_i),
+		.inst(id_inst_i),
 
 		.rs_data(reg1_data),
 		.rt_data(reg2_data),
@@ -153,8 +153,7 @@ module top(
 	  //EX模块的输出到EX/MEM模块信息
 		.we_o(ex_wreg_o),
 		.w_addr_o(ex_wd_o),
-		.wdata_o(ex_wdata_o)
-		
+		.w_data_o(ex_wdata_o)
 	);
 
   //EX/MEM模块
@@ -176,7 +175,7 @@ module top(
 	);
 	
   //MEM模块例化
-	mem mem0(
+	MEM mem0(
 		.rst(rst),
 	
 		//来自EX/MEM模块的信息	
