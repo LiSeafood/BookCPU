@@ -1,12 +1,22 @@
 `include "defines.v"
 module ID(
-    input  wire rst,
+    input  wire                 rst,
     input  wire [`InstAddrBus]  pc,
     input  wire [`InstBus]      inst,
 
     //读取的regfile的值
     input  wire [`RegBus]       rs_data,
     input  wire [`RegBus]       rt_data,
+
+    //来自EX段的运算结果定向
+    input  wire                 ex_we,
+    input  wire [`RegBus]       ex_w_data,
+    input  wire [`RegAddrBus]   ex_w_addr,
+
+    //来自MEM段的操作结果定向
+    input  wire                 mem_we,
+    input  wire [`RegBus]       mem_w_data,
+    input  wire [`RegAddrBus]   mem_w_addr,
 
     //输出到regfile的值
     output reg                  rs_read,
@@ -42,9 +52,9 @@ module ID(
         rt_read <= 1'b0;
         imm<=`zeroword;
         if(rst)begin//复位的话这些都是0
-		  w_addr <= `NOPRegAddr;
-		  rs_addr <= `NOPRegAddr;
-		  rt_addr <= `NOPRegAddr;
+          w_addr <= `NOPRegAddr;
+          rs_addr <= `NOPRegAddr;
+          rt_addr <= `NOPRegAddr;
         end else begin
           w_addr <= inst[15:11];
           rs_addr <= inst[25:21];
@@ -72,6 +82,10 @@ module ID(
     always @(*) begin
         if(rst)begin
           reg1<=`zeroword;
+        end else if(rs_read && ex_we &&(ex_w_addr==rs_addr))begin
+          reg1<=ex_w_data;  //若读取的寄存器就是上一条指令在EX要写的寄存器，就直接把EX的结果赋给reg1
+        end else if(rs_read && mem_we &&(mem_w_addr==rs_addr))begin
+          reg1<=mem_w_data;//若读取的寄存器就是上上条指令在MEM要写的寄存器，就直接把MEM的结果赋给reg1
         end else if(rs_read)begin
           reg1<=rs_data;    //若读了rs，读出来的就是源操作数1
         end else if(!rs_read)begin
@@ -85,6 +99,10 @@ module ID(
     always @(*) begin
         if(rst)begin
           reg2<=`zeroword;
+        end else if(rt_read && ex_we &&(ex_w_addr==rt_addr))begin
+          reg2<=ex_w_data;  //若读取的寄存器就是上一条指令在EX要写的寄存器，就直接把EX的结果赋给reg2
+        end else if(rt_read && mem_we &&(mem_w_addr==rt_addr))begin
+          reg2<=mem_w_data;//若读取的寄存器就是上上条指令在MEM要写的寄存器，就直接把MEM的结果赋给reg2
         end else if(rt_read)begin
           reg2<=rt_data;    //若读了rt，读出来的就是源操作数2
         end else if(!rt_read)begin

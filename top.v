@@ -86,6 +86,16 @@ module top(
 		.rs_data(reg1_data),
 		.rt_data(reg2_data),
 
+		//处于EX阶段的指令要写入的目的寄存器信息
+		.ex_we(ex_wreg_o),
+		.ex_w_data(ex_wdata_o),
+		.ex_w_addr(ex_wd_o),
+
+		//处于MEM阶段的指令要写入的目的寄存器信息
+		.mem_we(mem_wreg_o),
+		.mem_w_data(mem_wdata_o),
+		.mem_w_addr(mem_wd_o),
+
 		//送到regfile的信息
 		.rs_read(reg1_read),
 		.rt_read(reg2_read), 	  
