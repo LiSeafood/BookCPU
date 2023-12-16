@@ -40,175 +40,239 @@ module ID(
     wire [4:0] op4= inst[20:16];
 
     reg[`RegBus] imm;//立即数
-    reg valid;//指令是否有效
+    reg valid;//指令是否有效（这变量感觉没有用啊喂）
 
     //译码
     always @(*) begin//先赋初值，都赋为0
-        aluop   <= `EXE_NOP_OP;
-        alusel  <= `EXE_RES_NOP;
-        we      <= `writeDisable;
-        rs_read <= 1'b0;
-        rt_read <= 1'b0;
-        imm<=`zeroword;
-        if(rst)begin//复位的话这些都是0
-          w_addr <= `NOPRegAddr;
-          rs_addr <= `NOPRegAddr;
-          rt_addr <= `NOPRegAddr;
-          valid <= `InstValid;
-        end else begin
-          w_addr <= inst[15:11];    //默认写入地址:rd
-          rs_addr <= inst[25:21];   //默认读取地址1:rs
-          rt_addr <= inst[20:16];   //默认读取地址2:rt
-          valid <= `InstInvalid;    //译码完成前指令无效
+      aluop   <= `EXE_NOP_OP;
+      alusel  <= `EXE_RES_NOP;
+      we      <= `writeDisable;
+      rs_read <= 1'b0;
+      rt_read <= 1'b0;
+      imm<=`zeroword;
+      if(rst)begin//复位的话这些都是0
+        w_addr  <= `NOPRegAddr;
+        rs_addr <= `NOPRegAddr;
+        rt_addr <= `NOPRegAddr;
+        valid   <= `InstValid;
+      end else begin
+        w_addr <= inst[15:11];    //默认写入地址:rd
+        rs_addr <= inst[25:21];   //默认读取地址1:rs
+        rt_addr <= inst[20:16];   //默认读取地址2:rt
+        valid <= `InstInvalid;    //译码完成前指令无效
 
-          case(op)
-            `EXE_SPECIAL_INST:begin//指令码如果是全0说明是special类指令
-              case(op2)
-                5'b00000:begin
-                  case (op3)
-                    `EXE_OR:begin
-                      we<=`writeEnable;//需要写
-                      aluop<=`EXE_OR_OP;//子运算：或
-                      alusel<=`EXE_RES_LOGIC;//逻辑运算
-                      rs_read<=1'b1;//需读rs
-                      rt_read<=1'b1;//需读rt
-                      valid=`InstValid;//指令有效
-                    end 
-                    `EXE_AND:begin
+        case(op)
+          `EXE_SPECIAL_INST:begin//指令码如果是全0说明是special类指令
+            case(op2)
+              5'b00000:begin
+                case (op3)
+                  `EXE_OR:begin
+                    we<=`writeEnable;//需要写
+                    aluop<=`EXE_OR_OP;//子运算：或
+                    alusel<=`EXE_RES_LOGIC;//逻辑运算
+                    rs_read<=1'b1;//需读rs
+                    rt_read<=1'b1;//需读rt
+                    valid=`InstValid;//指令有效
+                  end 
+                  `EXE_AND:begin
+                    we<=`writeEnable;
+                    aluop<=`EXE_AND_OP;
+                    alusel<=`EXE_RES_LOGIC;
+                    rs_read<=1'b1;
+                    rt_read<=1'b1;
+                    valid=`InstValid;
+                  end
+                  `EXE_XOR:begin
+                    we<=`writeEnable;
+                    aluop<=`EXE_XOR_OP;
+                    alusel<=`EXE_RES_LOGIC;
+                    rs_read<=1'b1;
+                    rt_read<=1'b1;
+                    valid=`InstValid;
+                  end
+                  `EXE_NOR:begin
+                    we<=`writeEnable;
+                    aluop<=`EXE_NOR_OP;
+                    alusel<=`EXE_RES_LOGIC;
+                    rs_read<=1'b1;
+                    rt_read<=1'b1;
+                    valid=`InstValid;
+                  end
+                  `EXE_SLLV:begin
+                    we<=`writeEnable;
+                    aluop<=`EXE_SLL_OP;//子运算：左移
+                    alusel<=`EXE_RES_SHIFT;//移位运算
+                    rs_read<=1'b1;
+                    rt_read<=1'b1;
+                    valid=`InstValid;
+                  end
+                  `EXE_SRLV:begin
+                    we<=`writeEnable;
+                    aluop<=`EXE_SRL_OP;
+                    alusel<=`EXE_RES_SHIFT;
+                    rs_read<=1'b1;
+                    rt_read<=1'b1;
+                    valid=`InstValid;
+                  end
+                  `EXE_SRAV:begin
+                    we<=`writeEnable;
+                    aluop<=`EXE_SRA_OP;
+                    alusel<=`EXE_RES_SHIFT;
+                    rs_read<=1'b1;
+                    rt_read<=1'b1;
+                    valid=`InstValid;
+                  end
+                  `EXE_SYNC:begin
+                    we<=`writeEnable;
+                    aluop<=`EXE_NOP_OP;
+                    alusel<=`EXE_RES_NOP;
+                    rs_read<=1'b0;
+                    rt_read<=1'b1;
+                    valid=`InstValid;
+                  end
+                  `EXE_MFHI:begin
+                    we<=`writeEnable;
+                    aluop<=`EXE_MFHI_OP;
+                    alusel<=`EXE_RES_MOVE;//移动指令
+                    rs_read<=1'b0;
+                    rt_read<=1'b0;
+                    valid=`InstValid;
+                  end
+                  `EXE_MFLO:begin
+                    we<=`writeEnable;
+                    aluop<=`EXE_MFLO_OP;
+                    alusel<=`EXE_RES_MOVE;
+                    rs_read<=1'b0;
+                    rt_read<=1'b0;
+                    valid=`InstValid;
+                  end
+                  `EXE_MTHI:begin
+                    aluop<=`EXE_MTHI_OP;
+                    rs_read<=1'b1;
+                    rt_read<=1'b0;
+                    valid=`InstValid;
+                  end
+                  `EXE_MTLO:begin
+                    aluop<=`EXE_MTLO_OP;
+                    rs_read<=1'b1;
+                    rt_read<=1'b0;
+                    valid=`InstValid;
+                  end
+                  `EXE_MOVN:begin
+                    aluop<=`EXE_MOVN_OP;
+                    alusel<=`EXE_RES_MOVE;
+                    rs_read<=1'b1;
+                    rt_read<=1'b1;
+                    valid=`InstValid;
+                    if(reg2!=`zeroword)begin//reg2应该就是读到rt的值
                       we<=`writeEnable;
-                      aluop<=`EXE_AND_OP;
-                      alusel<=`EXE_RES_LOGIC;
-                      rs_read<=1'b1;
-                      rt_read<=1'b1;
-                      valid=`InstValid;
+                    end else begin
+                      we<=`writeDisable;
                     end
-                    `EXE_XOR:begin
+                  end
+                  `EXE_MOVZ:begin
+                    aluop<=`EXE_MOVZ_OP;
+                    alusel<=`EXE_RES_MOVE;
+                    rs_read<=1'b1;
+                    rt_read<=1'b1;
+                    valid=`InstValid;
+                    if(reg2==`zeroword)begin
                       we<=`writeEnable;
-                      aluop<=`EXE_XOR_OP;
-                      alusel<=`EXE_RES_LOGIC;
-                      rs_read<=1'b1;
-                      rt_read<=1'b1;
-                      valid=`InstValid;
+                    end else begin
+                      we<=`writeDisable;
                     end
-                    `EXE_NOR:begin
-                      we<=`writeEnable;
-                      aluop<=`EXE_NOR_OP;
-                      alusel<=`EXE_RES_LOGIC;
-                      rs_read<=1'b1;
-                      rt_read<=1'b1;
-                      valid=`InstValid;
-                    end
-                    `EXE_SLLV:begin
-                      we<=`writeEnable;
-                      aluop<=`EXE_SLL_OP;//子运算：左移
-                      alusel<=`EXE_RES_SHIFT;//移位运算
-                      rs_read<=1'b1;
-                      rt_read<=1'b1;
-                      valid=`InstValid;
-                    end
-                    `EXE_SRLV:begin
-                      we<=`writeEnable;
-                      aluop<=`EXE_SRL_OP;
-                      alusel<=`EXE_RES_SHIFT;
-                      rs_read<=1'b1;
-                      rt_read<=1'b1;
-                      valid=`InstValid;
-                    end
-                    `EXE_SRAV:begin
-                      we<=`writeEnable;
-                      aluop<=`EXE_SRA_OP;
-                      alusel<=`EXE_RES_SHIFT;
-                      rs_read<=1'b1;
-                      rt_read<=1'b1;
-                      valid=`InstValid;
-                    end
-                    `EXE_SYNC:begin
-                      we<=`writeEnable;
-                      aluop<=`EXE_NOP_OP;
-                      alusel<=`EXE_RES_NOP;
-                      rs_read<=1'b0;
-                      rt_read<=1'b1;
-                      valid=`InstValid;
-                    end
-                    default :begin
-                      
-                    end
-                  endcase //case op3
-                end
-                default :begin
-                  
-                end
-              endcase //case op2
-            end
-            `EXE_ORI: begin//与立即数的或运算
-              we<=`writeEnable;//需要写
-              aluop<=`EXE_OR_OP;//子运算：或
-              alusel<=`EXE_RES_LOGIC;//逻辑运算
-              rs_read<=1'b1;//需读rs
-              rt_read<=1'b0;//不用读rt
-              imm<={16'h0,inst[15:0]};//无符号扩展立即数
-              w_addr<=inst[20:16];//结果写进rt
-              valid=`InstValid;//指令有效
-            end
-            `EXE_ANDI:begin
-              we<=`writeEnable;
-              aluop<=`EXE_AND_OP;
-              alusel<=`EXE_RES_LOGIC;
-              rs_read<=1'b1;
-              rt_read<=1'b0;
-              imm<={16'h0,inst[15:0]};
-              w_addr<=inst[20:16];
-              valid=`InstValid;
-            end
-            `EXE_XORI:begin
-              we<=`writeEnable;
-              aluop<=`EXE_XOR_OP;
-              alusel<=`EXE_RES_LOGIC;
-              rs_read<=1'b1;
-              rt_read<=1'b0;
-              imm<={16'h0,inst[15:0]};
-              w_addr<=inst[20:16];
-              valid=`InstValid;
-            end
-            `EXE_LUI:begin
-              we<=`writeEnable;
-              aluop<=`EXE_OR_OP;
-              alusel<=`EXE_RES_LOGIC;
-              rs_read<=1'b1;
-              rt_read<=1'b0;
-              imm<={inst[15:0],16'h0};//立即数（左移16位）
-              w_addr<=inst[20:16];
-              valid=`InstValid;
-            end
-            `EXE_PREF:begin
-              we<=`writeDisable;
-              aluop<=`EXE_NOP_OP;
-              alusel<=`EXE_RES_NOP;
-              rs_read<=1'b0;
-              rt_read<=1'b0;
-              valid=`InstValid;
-            end
-            default begin
-              
-            end
-          endcase //case op
-
-          if(inst[31:21]==11'b00000000000)begin//以下是立即数移位指令
+                  end
+                  default :begin
+                    
+                  end
+                endcase //case op3
+              end
+              default :begin
+                
+              end
+            endcase //case op2
+          end
+          `EXE_ORI: begin//与立即数的或运算
+            we<=`writeEnable;//需要写
+            aluop<=`EXE_OR_OP;//子运算：或
+            alusel<=`EXE_RES_LOGIC;//逻辑运算
+            rs_read<=1'b1;//需读rs
+            rt_read<=1'b0;//不用读rt
+            imm<={16'h0,inst[15:0]};//无符号扩展立即数
+            w_addr<=inst[20:16];//结果写进rt
+            valid=`InstValid;//指令有效
+          end
+          `EXE_ANDI:begin
             we<=`writeEnable;
+            aluop<=`EXE_AND_OP;
+            alusel<=`EXE_RES_LOGIC;
+            rs_read<=1'b1;
+            rt_read<=1'b0;
+            imm<={16'h0,inst[15:0]};
+            w_addr<=inst[20:16];
+            valid=`InstValid;
+          end
+          `EXE_XORI:begin
+            we<=`writeEnable;
+            aluop<=`EXE_XOR_OP;
+            alusel<=`EXE_RES_LOGIC;
+            rs_read<=1'b1;
+            rt_read<=1'b0;
+            imm<={16'h0,inst[15:0]};
+            w_addr<=inst[20:16];
+            valid=`InstValid;
+          end
+          `EXE_LUI:begin
+            we<=`writeEnable;
+            aluop<=`EXE_OR_OP;
+            alusel<=`EXE_RES_LOGIC;
+            rs_read<=1'b1;
+            rt_read<=1'b0;
+            imm<={inst[15:0],16'h0};//立即数（左移16位）
+            w_addr<=inst[20:16];
+            valid=`InstValid;
+          end
+          `EXE_PREF:begin
+            we<=`writeDisable;
+            aluop<=`EXE_NOP_OP;
+            alusel<=`EXE_RES_NOP;
+            rs_read<=1'b0;
+            rt_read<=1'b0;
+            valid=`InstValid;
+          end
+          default begin
+            
+          end
+        endcase //case op
+
+        if(inst[31:21]==11'b00000000000)begin//以下是立即数移位指令
+          if(op3==`EXE_SLL)begin
+            we<=`writeEnable;
+            aluop<=`EXE_SLL_OP;//左移
             alusel<=`EXE_RES_SHIFT;//移位运算
             rs_read<=1'b0;//与rs无关
             rt_read<=1'b1;
             imm[4:0]<=inst[10:6];//立即数sa
             valid=`InstValid;
-            if(op3==`EXE_SLL)begin
-              aluop<=`EXE_SLL_OP;//左移
-            end else if(op3==`EXE_SRL)begin
-              aluop<=`EXE_SRL_OP;//右移
-            end else if(op3==`EXE_SRA)begin
-              aluop<=`EXE_SRA_OP;//右移
-            end
+          end else if(op3==`EXE_SRL)begin
+            we<=`writeEnable;
+            aluop<=`EXE_SRL_OP;//右移
+            alusel<=`EXE_RES_SHIFT;//移位运算
+            rs_read<=1'b0;//与rs无关
+            rt_read<=1'b1;
+            imm[4:0]<=inst[10:6];//立即数sa
+            valid=`InstValid;
+          end else if(op3==`EXE_SRA)begin
+            we<=`writeEnable;
+            aluop<=`EXE_SRA_OP;//右移
+            alusel<=`EXE_RES_SHIFT;//移位运算
+            rs_read<=1'b0;//与rs无关
+            rt_read<=1'b1;
+            imm[4:0]<=inst[10:6];//立即数sa
+            valid=`InstValid;
           end
-        end   //if
+        end
+      end   //if
     end   //always
 
     //确定源操作数1
