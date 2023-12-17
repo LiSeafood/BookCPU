@@ -62,7 +62,7 @@ module ID(
         valid <= `InstInvalid;    //译码完成前指令无效
 
         case(op)
-          `EXE_SPECIAL_INST:begin//指令码如果是全0说明是special类指令
+          `EXE_SPECIAL_INST:begin//special类指令
             case(op2)
               5'b00000:begin
                 case (op3)
@@ -245,10 +245,10 @@ module ID(
           end
         endcase //case op
 
-        if(inst[31:21]==11'b00000000000)begin//以下是立即数移位指令
+        if(inst[31:21]==11'b00000000000)begin//立即数移位指令
           if(op3==`EXE_SLL)begin
             we<=`writeEnable;
-            aluop<=`EXE_SLL_OP;//左移
+            aluop<=`EXE_SLL_OP;//逻辑左移
             alusel<=`EXE_RES_SHIFT;//移位运算
             rs_read<=1'b0;//与rs无关
             rt_read<=1'b1;
@@ -256,19 +256,19 @@ module ID(
             valid=`InstValid;
           end else if(op3==`EXE_SRL)begin
             we<=`writeEnable;
-            aluop<=`EXE_SRL_OP;//右移
-            alusel<=`EXE_RES_SHIFT;//移位运算
-            rs_read<=1'b0;//与rs无关
+            aluop<=`EXE_SRL_OP;//逻辑右移
+            alusel<=`EXE_RES_SHIFT;
+            rs_read<=1'b0;
             rt_read<=1'b1;
-            imm[4:0]<=inst[10:6];//立即数sa
+            imm[4:0]<=inst[10:6];
             valid=`InstValid;
           end else if(op3==`EXE_SRA)begin
             we<=`writeEnable;
-            aluop<=`EXE_SRA_OP;//右移
-            alusel<=`EXE_RES_SHIFT;//移位运算
-            rs_read<=1'b0;//与rs无关
+            aluop<=`EXE_SRA_OP;//算术右移
+            alusel<=`EXE_RES_SHIFT;
+            rs_read<=1'b0;
             rt_read<=1'b1;
-            imm[4:0]<=inst[10:6];//立即数sa
+            imm[4:0]<=inst[10:6];
             valid=`InstValid;
           end
         end
