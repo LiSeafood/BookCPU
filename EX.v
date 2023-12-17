@@ -30,14 +30,11 @@ module EX(
     output reg [`RegBus]  lo_o,
 
     //EX段的执行结果
-    output reg we_o,//执行指令最终是否要写
+    output reg we_o,//运算结果最终是否要写入
     output reg [`RegAddrBus]    w_addr_o,//执行指令最终要写入的寄存器地址
-    output reg [`RegBus]    w_data_o//执行指令最终要写的值
+    output reg [`RegBus]    w_data_o//运算结果的值
 );
 
-    reg [`RegBus] logicout; //逻辑运算结果
-    reg [`RegBus] shiftout; //移位运算结果
-    reg [`RegBus] moveout;  //移动运算结果
     reg [`RegBus] HI;       //保存HI的最新值
     reg [`RegBus] LO;       //保持LO的最新值
 
@@ -54,93 +51,52 @@ module EX(
       end
     end
 
-    //逻辑运算
+    //ALU的运算
     always @(*) begin
-        if(rst)begin
-          logicout<=`zeroword;
-        end else begin
-          case(aluop)
-            `EXE_OR_OP:begin//或
-              logicout<=reg1|reg2;
-            end
-            `EXE_AND_OP:begin//与
-              logicout<=reg1&reg2;
-            end
-            `EXE_NOR_OP:begin//或非
-              logicout<=~(reg1|reg2);
-            end
-            `EXE_XOR_OP:begin//异或
-              logicout<=reg1^reg2;
-            end
-            default:begin
-              logicout<=`zeroword;
-            end
-          endcase
-        end //if
-    end //always
-
-    //移位运算
-    always @(*) begin
+      w_addr_o<=w_addr_i;
+      we_o<=we_i;
       if(rst)begin
-        shiftout<=`zeroword;
+        w_data_o<=`zeroword;
       end else begin
-        case (aluop)
+        case(aluop)
+          `EXE_OR_OP:begin//或
+            w_data_o<=reg1|reg2;
+          end
+          `EXE_AND_OP:begin//与
+            w_data_o<=reg1&reg2;
+          end
+          `EXE_NOR_OP:begin//或非
+            w_data_o<=~(reg1|reg2);
+          end
+          `EXE_XOR_OP:begin//异或
+            w_data_o<=reg1^reg2;
+          end
           `EXE_SLL_OP:begin//逻辑左移
-            shiftout<= reg2<<reg1[4:0];
+            w_data_o<= reg2<<reg1[4:0];
           end
           `EXE_SRL_OP:begin//逻辑右移
-            shiftout<= reg2>>reg1[4:0];
+            w_data_o<= reg2>>reg1[4:0];
           end
           `EXE_SRA_OP:begin//算术右移
-            shiftout<=({32{reg2[31]}}<<(6'd32-{1'b0,reg1[4:0]}))|reg2>>reg1[4:0];
+            w_data_o<=({32{reg2[31]}}<<(6'd32-{1'b0,reg1[4:0]}))|reg2>>reg1[4:0];
           end
-        endcase
-        end //if
-    end //always
-
-    //移动运算
-    always @(*) begin
-      if(rst)begin
-        moveout <= `zeroword;
-      end else begin
-        case (aluop)
           `EXE_MFHI_OP:begin
-            moveout<=HI;
+            w_data_o<=HI;
           end
           `EXE_MFLO_OP:begin
-            moveout<=LO;
+            w_data_o<=LO;
           end
           `EXE_MOVZ_OP:begin
-            moveout<=reg1;
+            w_data_o<=reg1;
           end
           `EXE_MOVN_OP:begin
-            moveout<=reg1;
+            w_data_o<=reg1;
           end
-          default :begin
-            
-          end
-        endcase
-      end
-    end
-
-    //依据alusel选择运算结果
-    always @(*) begin
-        w_addr_o<=w_addr_i;
-        we_o<=we_i;
-        case(alusel)
-          `EXE_RES_LOGIC:begin
-            w_data_o<=logicout;
-          end
-          `EXE_RES_SHIFT:begin
-            w_data_o<=shiftout;
-          end
-          `EXE_RES_MOVE:begin
-            w_data_o<=moveout;
-          end
-          default :begin
+          default:begin
             w_data_o<=`zeroword;
           end
         endcase
+      end
     end
 
     //MTHI、MTLO指令对HI、LO寄存器的写操作

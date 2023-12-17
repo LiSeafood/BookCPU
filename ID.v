@@ -45,7 +45,7 @@ module ID(
     //译码
     always @(*) begin//先赋初值，都赋为0
       aluop   <= `EXE_NOP_OP;
-      alusel  <= `EXE_RES_NOP;
+      alusel  <= `EXE_RES_NOP;//说真的我觉得这个也没用
       we      <= `writeDisable;
       rs_read <= 1'b0;
       rt_read <= 1'b0;
@@ -308,5 +308,8 @@ module ID(
           reg2<=`zeroword;
         end
     end
-    
+
+    //我总感觉valid和alusel这俩变量没卵用，只起到了挤占内存、增加代码量的作用。
+    //我打算在所有的指令都加上后，如果这两个还是没有表现出作用来，就尝试把它们删了。
+    //希望我到时候记得这件事吧。如果这三行注释没删掉，那我应该就是忘了
 endmodule
