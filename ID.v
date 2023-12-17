@@ -182,6 +182,70 @@ module ID(
                       we<=`writeDisable;
                     end
                   end
+                  `EXE_SLT:begin
+                    we<=`writeEnable;
+                    aluop<=`EXE_SLT_OP;
+                    alusel<=`EXE_RES_ARITHMETIC;//算术指令
+                    rs_read<=1'b1;
+                    rt_read<=1'b1;
+                    valid=`InstValid;
+                  end
+                  `EXE_SLTU:begin
+                    we<=`writeEnable;
+                    aluop<=`EXE_SLTU_OP;
+                    alusel<=`EXE_RES_ARITHMETIC;
+                    rs_read<=1'b1;
+                    rt_read<=1'b1;
+                    valid=`InstValid;
+                  end
+                  `EXE_ADD:begin
+                    we<=`writeEnable;
+                    aluop<=`EXE_ADD_OP;
+                    alusel<=`EXE_RES_ARITHMETIC;
+                    rs_read<=1'b1;
+                    rt_read<=1'b1;
+                    valid=`InstValid;
+                  end
+                  `EXE_ADDU:begin
+                    we<=`writeEnable;
+                    aluop<=`EXE_ADDU_OP;
+                    alusel<=`EXE_RES_ARITHMETIC;
+                    rs_read<=1'b1;
+                    rt_read<=1'b1;
+                    valid=`InstValid;
+                  end
+                  `EXE_SUB:begin
+                    we<=`writeEnable;
+                    aluop<=`EXE_SUB_OP;
+                    alusel<=`EXE_RES_ARITHMETIC;
+                    rs_read<=1'b1;
+                    rt_read<=1'b1;
+                    valid=`InstValid;
+                  end
+                  `EXE_SUBU:begin
+                    we<=`writeEnable;
+                    aluop<=`EXE_SUBU_OP;
+                    alusel<=`EXE_RES_ARITHMETIC;
+                    rs_read<=1'b1;
+                    rt_read<=1'b1;
+                    valid=`InstValid;
+                  end
+                  `EXE_MULT:begin
+                    we<=`writeEnable;
+                    aluop<=`EXE_MULT_OP;
+                    alusel<=`EXE_RES_ARITHMETIC;
+                    rs_read<=1'b1;
+                    rt_read<=1'b1;
+                    valid=`InstValid;
+                  end
+                  `EXE_MULTU:begin
+                    we<=`writeEnable;
+                    aluop<=`EXE_MULTU_OP;
+                    alusel<=`EXE_RES_ARITHMETIC;
+                    rs_read<=1'b1;
+                    rt_read<=1'b1;
+                    valid=`InstValid;
+                  end
                   default :begin
                     
                   end
@@ -191,6 +255,37 @@ module ID(
                 
               end
             endcase //case op2
+          end
+          `EXE_SPECIAL2_INST:begin  //special2类指令
+            case(op3)
+              `EXE_CLZ:begin
+                we<=`writeEnable;
+                aluop<=`EXE_CLZ_OP;
+                alusel<=`EXE_RES_ARITHMETIC;
+                rs_read<=1'b1;
+                rt_read<=1'b0;
+                valid=`InstValid;
+              end
+              `EXE_CLO:begin
+                we<=`writeEnable;
+                aluop<=`EXE_CLO_OP;
+                alusel<=`EXE_RES_ARITHMETIC;
+                rs_read<=1'b1;
+                rt_read<=1'b0;
+                valid=`InstValid;
+              end
+              `EXE_MUL:begin
+                we<=`writeEnable;
+                aluop<=`EXE_MUL_OP;
+                alusel<=`EXE_RES_ARITHMETIC;
+                rs_read<=1'b1;
+                rt_read<=1'b1;
+                valid=`InstValid;
+              end
+              default begin
+                
+              end
+            endcase //case op3
           end
           `EXE_ORI: begin//与立即数的或运算
             we<=`writeEnable;//需要写
@@ -238,6 +333,46 @@ module ID(
             alusel<=`EXE_RES_NOP;
             rs_read<=1'b0;
             rt_read<=1'b0;
+            valid=`InstValid;
+          end
+          `EXE_SLTI:begin
+            we<=`writeEnable;
+            aluop<=`EXE_SLT_OP;
+            alusel<=`EXE_RES_LOGIC;
+            rs_read<=1'b1;
+            rt_read<=1'b0;
+            imm<={{16{inst[15]}},inst[15:0]};//有符号扩展立即数
+            w_addr<=inst[20:16];
+            valid=`InstValid;
+          end
+          `EXE_SLTIU:begin
+            we<=`writeEnable;
+            aluop<=`EXE_SLTU_OP;
+            alusel<=`EXE_RES_LOGIC;
+            rs_read<=1'b1;
+            rt_read<=1'b0;
+            imm<={{16{inst[15]}},inst[15:0]};
+            w_addr<=inst[20:16];
+            valid=`InstValid;
+          end
+          `EXE_ADDI:begin
+            we<=`writeEnable;
+            aluop<=`EXE_ADDI_OP;
+            alusel<=`EXE_RES_LOGIC;
+            rs_read<=1'b1;
+            rt_read<=1'b0;
+            imm<={{16{inst[15]}},inst[15:0]};
+            w_addr<=inst[20:16];
+            valid=`InstValid;
+          end
+          `EXE_ADDIU:begin
+            we<=`writeEnable;
+            aluop<=`EXE_ADDIU_OP;
+            alusel<=`EXE_RES_LOGIC;
+            rs_read<=1'b1;
+            rt_read<=1'b0;
+            imm<={{16{inst[15]}},inst[15:0]};
+            w_addr<=inst[20:16];
             valid=`InstValid;
           end
           default begin

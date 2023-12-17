@@ -36,8 +36,8 @@ module EX(
 );
 
     reg [`RegBus] HI;       //保存HI的最新值
-    reg [`RegBus] LO;       //保持LO的最新值
-
+    reg [`RegBus] LO;       //保存LO的最新值
+    
     //处理HILO的值及数据相关问题
     always @(*) begin
       if(rst)begin
@@ -51,10 +51,60 @@ module EX(
       end
     end
 
+    wire          ov_sum;      //保存溢出情况
+    wire          reg1_eq_reg2;//第一个操作数是否等于第二个操作数
+    wire          reg1_lt_reg2;//第一个操作数是否小于第二个操作数
+    wire [`RegBus]  reg2_mux;  //第二个操作数的补码
+    wire [`RegBus]  reg1_not;  //第一个操作数的反码
+    wire [`RegBus]  sum_res;   //保存加法结果
+    
+    //减法或符号比较运算，则reg2_mux就等于第二个操作数的补码
+    assign reg2_mux=((aluop==`EXE_SUB_OP)||
+                     (aluop==`EXE_SUBU_OP)||
+                     (aluop==`EXE_SLT_OP))?
+                    (~reg2)+1:reg2;//否则等于第二个操作数
+    assign sum_res = reg1+reg2_mux; //加、减、符号比较运算的结果
+    assign ov_sum  = ((!reg1[31] && !reg2_mux[31])&& sum_res[31])||//两正之和得负数，溢出
+                     ((reg1[31]  && reg2_mux[31]) && !sum_res[31]);//两负之和得正数，溢出
+    assign reg1_lt_reg2= (aluop==`EXE_SLT_OP)?//若为有符号比较
+                         ((reg1[31] && !reg2[31])||//1负2正，1小于2
+                          (!reg1[31]&& !reg2[31] && sum_res[31])||//两正之差为负，1小于2
+                          (reg1[31] && reg2[31]  && sum_res[31]))://两负之差为负，1小于2
+                         (reg1<reg2);//无符号比较就直接比较得出结果
+    assign reg1_not = ~reg1;//reg1逐位取反
+
+    wire [`RegBus]  opdata1_mult;//乘法中的被乘数
+    wire [`RegBus]  opdata2_mult;//乘法中的乘数
+    wire [`DoubleRegBus]  hilo_temp;//临时保存乘法结果
+    reg  [`DoubleRegBus]  mulres;  //保存乘法结果
+    
+    //如果是有符号的乘法且被乘数为负，则取补码
+    assign opdata1_mult=(((aluop==`EXE_MUL_OP)||
+                          (aluop==`EXE_MULT_OP))&&reg1[31])?
+                          (reg1_not+1):reg1;
+    //如果是有符号的乘法且乘数为负，则取补码
+    assign opdata2_mult=(((aluop==`EXE_MUL_OP)||
+                          (aluop==`EXE_MULT_OP))&&reg2[31])?
+                          (~reg2+1):reg2;
+    assign hilo_temp = opdata1_mult *opdata2_mult;//临时的乘法结果
+    always @(*) begin//调整最终乘法结果
+      if(rst)begin
+        mulres<={`zeroword,`zeroword};
+      end else if(((aluop==`EXE_MULT_OP)||(aluop==`EXE_MUL_OP))&&(reg1[31]^reg2[31]))begin
+          mulres<= ~hilo_temp+1;//对临时结果取补码
+      end else begin
+        mulres<= hilo_temp;
+      end
+    end
+
     //ALU的运算
     always @(*) begin
       w_addr_o<=w_addr_i;
-      we_o<=we_i;
+      if((aluop==`EXE_ADD_OP)||(aluop==`EXE_ADDI_OP)||(aluop==`EXE_SUB_OP)&& ov_sum)begin
+        we_o<=`writeDisable;//有溢出，不写啦
+      end else begin
+        we_o<=we_i;
+      end
       if(rst)begin
         w_data_o<=`zeroword;
       end else begin
@@ -86,11 +136,85 @@ module EX(
           `EXE_MFLO_OP:begin
             w_data_o<=LO;
           end
-          `EXE_MOVZ_OP:begin
+          `EXE_MOVZ_OP,`EXE_MOVN_OP:begin
             w_data_o<=reg1;
           end
-          `EXE_MOVN_OP:begin
-            w_data_o<=reg1;
+          `EXE_SLT_OP,`EXE_SLTU_OP:begin//比较
+            w_data_o<=reg1_lt_reg2;
+          end
+          `EXE_ADD_OP,`EXE_ADDU_OP,`EXE_ADDI_OP,`EXE_ADDIU_OP,`EXE_SUB_OP,`EXE_SUBU_OP:begin//加、减
+            w_data_o<=sum_res;
+          end
+          `EXE_MULT_OP,`EXE_MUL_OP,`EXE_MULTU_OP:begin//乘法
+            w_data_o<=mulres[31:0];
+          end
+          `EXE_CLZ_OP:begin//计数clz
+            w_data_o<=reg1[31] ? 0  : 
+                      reg1[30] ? 1  : 
+                      reg1[29] ? 2  :
+                      reg1[28] ? 3  : 
+                      reg1[27] ? 4  : 
+                      reg1[26] ? 5  :
+                      reg1[25] ? 6  : 
+                      reg1[24] ? 7  : 
+                      reg1[23] ? 8  : 
+                      reg1[22] ? 9  : 
+                      reg1[21] ? 10 : 
+                      reg1[20] ? 11 :
+                      reg1[19] ? 12 : 
+                      reg1[18] ? 13 : 
+                      reg1[17] ? 14 : 
+                      reg1[16] ? 15 : 
+                      reg1[15] ? 16 : 
+                      reg1[14] ? 17 : 
+                      reg1[13] ? 18 : 
+                      reg1[12] ? 19 : 
+                      reg1[11] ? 20 :
+                      reg1[10] ? 21 : 
+                      reg1[9]  ? 22 : 
+                      reg1[8]  ? 23 : 
+                      reg1[7]  ? 24 : 
+                      reg1[6]  ? 25 : 
+                      reg1[5]  ? 26 : 
+                      reg1[4]  ? 27 : 
+                      reg1[3]  ? 28 : 
+                      reg1[2]  ? 29 : 
+                      reg1[1]  ? 30 : 
+                      reg1[0]  ? 31 : 32 ;
+          end
+          `EXE_CLO_OP:begin//计数clo
+            w_data_o<=reg1_not[31] ? 0  : 
+                      reg1_not[30] ? 1  : 
+                      reg1_not[29] ? 2  :
+                      reg1_not[28] ? 3  : 
+                      reg1_not[27] ? 4  : 
+                      reg1_not[26] ? 5  :
+                      reg1_not[25] ? 6  : 
+                      reg1_not[24] ? 7  : 
+                      reg1_not[23] ? 8  : 
+                      reg1_not[22] ? 9  : 
+                      reg1_not[21] ? 10 : 
+                      reg1_not[20] ? 11 :
+                      reg1_not[19] ? 12 : 
+                      reg1_not[18] ? 13 : 
+                      reg1_not[17] ? 14 : 
+                      reg1_not[16] ? 15 : 
+                      reg1_not[15] ? 16 : 
+                      reg1_not[14] ? 17 : 
+                      reg1_not[13] ? 18 : 
+                      reg1_not[12] ? 19 : 
+                      reg1_not[11] ? 20 :
+                      reg1_not[10] ? 21 : 
+                      reg1_not[9]  ? 22 : 
+                      reg1_not[8]  ? 23 : 
+                      reg1_not[7]  ? 24 : 
+                      reg1_not[6]  ? 25 : 
+                      reg1_not[5]  ? 26 : 
+                      reg1_not[4]  ? 27 : 
+                      reg1_not[3]  ? 28 : 
+                      reg1_not[2]  ? 29 : 
+                      reg1_not[1]  ? 30 : 
+                      reg1_not[0]  ? 31 : 32;
           end
           default:begin
             w_data_o<=`zeroword;
@@ -105,6 +229,10 @@ module EX(
         hilo_o<=`writeDisable;
         hi_o<=`zeroword;
         lo_o<=`zeroword;
+      end else if((aluop==`EXE_MULT_OP)||(aluop==`EXE_MULTU_OP))begin
+        hilo_o<=`writeEnable;
+        hi_o<=mulres[63:32];
+        lo_o<=mulres[31:0];
       end else if(aluop==`EXE_MTHI_OP)begin
         hilo_o<=`writeEnable;
         hi_o<=reg1;//写HI寄存器
