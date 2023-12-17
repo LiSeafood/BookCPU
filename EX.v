@@ -100,7 +100,7 @@ module EX(
     //ALU的运算
     always @(*) begin
       w_addr_o<=w_addr_i;
-      if((aluop==`EXE_ADD_OP)||(aluop==`EXE_ADDI_OP)||(aluop==`EXE_SUB_OP)&& ov_sum)begin
+      if(((aluop==`EXE_ADD_OP)||(aluop==`EXE_ADDI_OP)||(aluop==`EXE_SUB_OP))&& ov_sum)begin
         we_o<=`writeDisable;//有溢出，不写啦
       end else begin
         we_o<=we_i;
