@@ -18,6 +18,9 @@ module ID(
     input  wire [`RegBus]       mem_w_data,
     input  wire [`RegAddrBus]   mem_w_addr,
 
+    //若上一条是转移指令，则下一条指令进入时此变量为true
+    input  wire                 delay_i,//当前指令是否是延迟槽指令
+
     //输出到regfile的值
     output reg                  rs_read,
     output reg                  rt_read,
@@ -32,8 +35,24 @@ module ID(
     output reg [`RegAddrBus]    w_addr, //ID的指令要写入的目的寄存器地址
     output reg                  we,     //ID的指令是否要写入目的寄存器
 
+    //转移相关指令
+    output reg                  branch, //要不要转移
+    output reg [`RegBus]        b_addr, //转移到的目标地址
+    output reg [`RegBus]        link_addr,//转移指令要保存的返回地址
+    output reg                  delay_o,//当前指令是否是延迟槽指令    
+    output reg                  next_delay_o,//下一条指令是不是延迟槽指令
+
 	  output wire                 stallreq//暂停请求
 );
+
+    //转移指令相关
+    wire [`RegBus]  pc_plus_8;
+    wire [`RegBus]  pc_plus_4;
+    assign pc_plus_8=pc+8;//保存当前指令后第2条指令
+    assign pc_plus_4=pc+4;//保存当前指令紧接的指令
+
+    wire [`RegBus]  imm_sll2_signednext;//offset左移两位再扩展至32位
+    assign imm_sll2_signednext={{14{inst[15]}},inst[15:0],2'b00};
 
     //取得指令的指令码和功能码，用于判断是什么指令
     wire [5:0] op = inst[31:26];    //指令码
@@ -44,7 +63,7 @@ module ID(
     reg[`RegBus] imm;//立即数
     reg valid;//指令是否有效（这变量感觉没有用啊喂）
     
-    assign stallreq = `NoStop;//不暂停？怎么后续没有控制了呢
+    assign stallreq = `NoStop;
 
     //译码
     always @(*) begin//先赋初值，都赋为0
@@ -54,6 +73,10 @@ module ID(
       rs_read <= 1'b0;
       rt_read <= 1'b0;
       imm<=`zeroword;
+      link_addr<=`zeroword;
+      b_addr<=`zeroword;
+      branch<=`NotBranch;
+      next_delay_o<=`NotInDelaySlot;
       if(rst)begin//复位的话这些都是0
         w_addr  <= `NOPRegAddr;
         rs_addr <= `NOPRegAddr;
@@ -262,6 +285,30 @@ module ID(
                     rt_read<=1'b1;
                     valid=`InstValid;
                   end
+                  `EXE_JR:begin
+                    we<=`writeDisable;
+                    aluop<=`EXE_JR_OP;
+                    alusel<=`EXE_RES_JUMP_BRANCH;//转移指令
+                    rs_read<=1'b1;
+                    rt_read<=1'b0;
+                    link_addr<=`zeroword;
+                    b_addr<=reg1;
+                    branch<=`Branch;
+                    next_delay_o<=`InDelaySlot;
+                    valid=`InstValid;
+                  end
+                  `EXE_JALR:begin
+                    we<=`writeEnable;
+                    aluop<=`EXE_JALR_OP;
+                    alusel<=`EXE_RES_JUMP_BRANCH;
+                    rs_read<=1'b1;
+                    rt_read<=1'b0;
+                    link_addr<=pc_plus_8;
+                    b_addr<=reg1;
+                    branch<=`Branch;
+                    next_delay_o<=`InDelaySlot;
+                    valid=`InstValid;
+                  end
                   default :begin
                     
                   end
@@ -272,6 +319,7 @@ module ID(
               end
             endcase //case op2
           end
+
           `EXE_SPECIAL2_INST:begin  //special2类指令
             case(op3)
               `EXE_CLZ:begin
@@ -326,6 +374,147 @@ module ID(
                 
               end
             endcase //case op3
+          end
+          
+          `EXE_REGIMM_INST:begin
+            case (op4)
+              `EXE_BGEZ:begin
+                we<=`writeDisable;
+                aluop<=`EXE_BGEZ_OP;
+                alusel<=`EXE_RES_JUMP_BRANCH;
+                rs_read<=1'b1;
+                rt_read<=1'b0;
+                if(!reg1[31])begin
+                  branch<=`Branch;
+                  next_delay_o<=`InDelaySlot;
+                  b_addr<=pc_plus_4+imm_sll2_signednext;
+                end
+                valid=`InstValid;
+              end 
+              `EXE_BGEZAL:begin
+                we<=`writeEnable;
+                aluop<=`EXE_BGEZAL_OP;
+                alusel<=`EXE_RES_JUMP_BRANCH;
+                rs_read<=1'b1;
+                rt_read<=1'b0;
+                link_addr<=pc_plus_8;
+                w_addr<=5'b11111;
+                if(!reg1[31])begin
+                  branch<=`Branch;
+                  next_delay_o<=`InDelaySlot;
+                  b_addr<=pc_plus_4+imm_sll2_signednext;
+                end
+                valid=`InstValid;
+              end
+              `EXE_BLTZ:begin
+                we<=`writeDisable;
+                aluop<=`EXE_BLTZ_OP;
+                alusel<=`EXE_RES_JUMP_BRANCH;
+                rs_read<=1'b1;
+                rt_read<=1'b0;
+                if(reg1[31])begin
+                  branch<=`Branch;
+                  next_delay_o<=`InDelaySlot;
+                  b_addr<=pc_plus_4+imm_sll2_signednext;
+                end
+                valid=`InstValid;
+              end
+              `EXE_BLTZAL:begin
+                we<=`writeEnable;
+                aluop<=`EXE_BLTZAL_OP;
+                alusel<=`EXE_RES_JUMP_BRANCH;
+                rs_read<=1'b1;
+                rt_read<=1'b0;
+                link_addr<=pc_plus_8;
+                w_addr<=5'b11111;
+                if(reg1[31])begin
+                  branch<=`Branch;
+                  next_delay_o<=`InDelaySlot;
+                  b_addr<=pc_plus_4+imm_sll2_signednext;
+                end
+                valid=`InstValid;
+              end
+              default: begin
+                
+              end
+            endcase
+          end
+          `EXE_J:begin
+            we<=`writeDisable;
+            aluop<=`EXE_J_OP;
+            alusel<=`EXE_RES_JUMP_BRANCH;
+            rs_read<=1'b0;
+            rt_read<=1'b0;
+            link_addr<=`zeroword;
+            branch<=`Branch;
+            next_delay_o<=`InDelaySlot;
+            b_addr<={pc_plus_4[31:28],inst[25:0],2'b00};
+            valid=`InstValid;
+          end
+          `EXE_JAL:begin
+            we<=`writeEnable;
+            aluop<=`EXE_JAL_OP;
+            alusel<=`EXE_RES_JUMP_BRANCH;
+            rs_read<=1'b0;
+            rt_read<=1'b0;
+            w_addr<=5'b11111;
+            link_addr<=pc_plus_8;
+            branch<=`Branch;
+            next_delay_o<=`InDelaySlot;
+            b_addr<={pc_plus_4[31:28],inst[25:0],2'b00};
+            valid=`InstValid;
+          end
+          `EXE_BEQ:begin
+            we<=`writeDisable;
+            aluop<=`EXE_BEQ_OP;
+            alusel<=`EXE_RES_JUMP_BRANCH;
+            rs_read<=1'b1;
+            rt_read<=1'b1;
+            if(reg1==reg2)begin
+              branch<=`Branch;
+              next_delay_o<=`InDelaySlot;
+              b_addr<=pc_plus_4+imm_sll2_signednext;
+            end
+            valid=`InstValid;
+          end
+          `EXE_BNE:begin
+            we<=`writeDisable;
+            aluop<=`EXE_BNE_OP;
+            alusel<=`EXE_RES_JUMP_BRANCH;
+            rs_read<=1'b1;
+            rt_read<=1'b1;
+            if(reg1!=reg2)begin
+              branch<=`Branch;
+              next_delay_o<=`InDelaySlot;
+              b_addr<=pc_plus_4+imm_sll2_signednext;
+            end
+            valid=`InstValid;
+          end
+          `EXE_BGTZ:begin
+            we<=`writeDisable;
+            aluop<=`EXE_BGTZ_OP;
+            alusel<=`EXE_RES_JUMP_BRANCH;
+            rs_read<=1'b1;
+            rt_read<=1'b0;
+            if(!reg1[31]&&(reg1!=`zeroword))begin
+              branch<=`Branch;
+              next_delay_o<=`InDelaySlot;
+              b_addr<=pc_plus_4+imm_sll2_signednext;
+            end
+            valid=`InstValid;
+          end
+          `EXE_BLEZ:begin
+            we<=`writeDisable;
+            aluop<=`EXE_BLEZ_OP;
+            alusel<=`EXE_RES_JUMP_BRANCH;
+            rs_read<=1'b1;
+            rt_read<=1'b0;
+            if(reg1[31]||reg1==`zeroword)begin
+              branch<=`Branch;
+              next_delay_o<=`InDelaySlot;
+              b_addr<=pc_plus_4+imm_sll2_signednext;
+            end
+            valid=`InstValid;
           end
           `EXE_ORI: begin//与立即数的或运算
             we<=`writeEnable;//需要写
@@ -484,7 +673,15 @@ module ID(
         end
     end
 
-    //我总感觉valid和alusel这俩变量没卵用，只起到了挤占内存、增加代码量的作用。
-    //我打算在所有的指令都加上后，如果这两个还是没有表现出作用来，就尝试把它们删了。
+    always @(*) begin
+      if(rst)begin
+        delay_o<=`NotInDelaySlot;
+      end else begin
+        delay_o<=delay_i;
+      end
+    end
+
+    //我总感觉valid这变量没卵用，只起到了挤占内存、增加代码量的作用。
+    //我打算在所有的指令都加上后，如果这个还是没有表现出作用来，就尝试把它删了。
     //希望我到时候记得这件事吧。如果这三行注释没删掉，那我应该就是忘了
 endmodule

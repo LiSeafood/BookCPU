@@ -4,6 +4,9 @@ module IF(
     input wire                  clk,//时钟信号
     input wire                  rst,//复位信号
     input  wire [5:0]           stall,//暂停信号
+    input  wire                 branch,//是否转移
+    input  wire [`RegBus]       b_addr,//转移地址
+
     output reg[`InstAddrBus]    pc,
     output reg                  ce
 );
@@ -18,9 +21,13 @@ module IF(
 
     always @ (posedge clk) begin
         if (!ce) begin
-            pc <= 32'hbfb00000;
+            pc <= 32'h00000000;
         end else if(!stall[0])begin
-            pc <= pc + 4'h4;//pc每周期+4
+            if(branch) begin
+              pc<=b_addr;
+            end else begin
+              pc <= pc + 4'h4;//pc每周期+4
+            end
         end
     end
 

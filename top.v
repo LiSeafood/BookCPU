@@ -20,6 +20,8 @@ module top(
 	wire[`RegBus] id_reg2_o;
 	wire id_wreg_o;
 	wire[`RegAddrBus] id_wd_o;
+	wire id_is_in_delayslot_o;
+  	wire[`RegBus] id_link_address_o;	
 	
 	//连接ID/EX模块的输出与执行阶段EX模块的输入
 	wire[`AluOpBus] ex_aluop_i;
@@ -28,6 +30,8 @@ module top(
 	wire[`RegBus] ex_reg2_i;
 	wire ex_wreg_i;
 	wire[`RegAddrBus] ex_wd_i;
+	wire ex_is_in_delayslot_i;	
+  	wire[`RegBus] ex_link_address_i;	
 	
 	//连接执行阶段EX模块的输出与EX/MEM模块的输入
 	wire ex_wreg_o;
@@ -89,6 +93,13 @@ module top(
 	wire div_annul;
 	wire signed_div;
 
+	//分支延迟信号
+	wire is_in_delayslot_i;
+	wire is_in_delayslot_o;
+	wire next_inst_in_delayslot_o;
+	wire id_branch_flag_o;
+	wire[`RegBus] branch_target_address;
+
 	//暂停信号
 	wire[5:0] stall;
 	wire stallreq_from_id;	
@@ -99,6 +110,8 @@ module top(
 		.clk(clk),
 		.rst(rst),
 		.stall(stall),
+		.branch(id_branch_flag_o),
+		.b_addr(branch_target_address),
 		.pc(pc),
 		.ce(rom_ce_o)	
 	);
@@ -134,6 +147,9 @@ module top(
 		.mem_we(mem_wreg_o),
 		.mem_w_data(mem_wdata_o),
 		.mem_w_addr(mem_wd_o),
+		
+		//延迟槽
+		.delay_i(is_in_delayslot_i),
 
 		//送到regfile的信息
 		.rs_read(reg1_read),
@@ -148,6 +164,13 @@ module top(
 		.reg2(id_reg2_o),
 		.w_addr(id_wd_o),
 		.we(id_wreg_o),
+
+		//分支转移延迟槽相关
+		.next_delay_o(next_inst_in_delayslot_o),	
+		.branch(id_branch_flag_o),
+		.b_addr(branch_target_address),       
+		.link_addr(id_link_address_o),
+		.delay_o(id_is_in_delayslot_o),
 
 		.stallreq(stallreq_from_id)
 	);
@@ -180,6 +203,9 @@ module top(
 		.id_reg2(id_reg2_o),
 		.id_wd(id_wd_o),
 		.id_wreg(id_wreg_o),
+		.id_link_address(id_link_address_o),
+		.id_is_in_delayslot(id_is_in_delayslot_o),
+		.next_inst_in_delayslot_i(next_inst_in_delayslot_o),	
 	
 		//传递到执行阶段EX模块的信息
 		.ex_aluop(ex_aluop_i),
@@ -187,7 +213,10 @@ module top(
 		.ex_reg1(ex_reg1_i),
 		.ex_reg2(ex_reg2_i),
 		.ex_wd(ex_wd_i),
-		.ex_wreg(ex_wreg_i)
+		.ex_wreg(ex_wreg_i),
+		.ex_link_address(ex_link_address_i),
+  		.ex_is_in_delayslot(ex_is_in_delayslot_i),
+		.is_in_delayslot_o(is_in_delayslot_i)	
 	);		
 	
 	//EX模块
@@ -216,6 +245,9 @@ module top(
 
 		.div_res_i(div_result),
 		.div_done_i(div_ready), 
+
+		.link_addr_i(ex_link_address_i),
+		.is_in_delayslot_i(ex_is_in_delayslot_i),	
 	  
 	  //EX模块的输出到EX/MEM模块信息
 		.we_o(ex_wreg_o),

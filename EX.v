@@ -32,6 +32,12 @@ module EX(
     input  wire [`DoubleRegBus]   div_res_i,//除法结果
     input  wire                   div_done_i,//除法是否完成
 
+    //EX段的转移指令要保存的返回值
+    input  wire [`RegBus]          link_addr_i,
+
+    //当前EX段的指令是否位于延迟槽
+    input  wire                   is_in_delayslot_i,
+
     //EX段的指令对HI、LO寄存器的写操作请求
     output reg            hilo_o,
     output reg [`RegBus]  hi_o,
@@ -340,6 +346,9 @@ module EX(
             w_data_o<=`zeroword;
           end
         endcase
+        if(alusel==`EXE_RES_JUMP_BRANCH)begin//分支转移
+          w_data_o<=link_addr_i;
+        end
       end
     end
 

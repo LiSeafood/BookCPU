@@ -9,6 +9,7 @@ module rom(
 	reg[`InstBus]  inst_mem[0:`InstMemNum-1];
 
 	//这串是初始化指令存储器的代码
+	
 	initial $readmemh ("E:/Codes/Verilog_Program/BookCPU/inst_rom.data", inst_mem );
 
 	always @ (*) begin
