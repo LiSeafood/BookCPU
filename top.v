@@ -80,6 +80,16 @@ module top(
 	wire[`DoubleRegBus] hilo_temp_i;
 	wire[1:0] cnt_i;
 
+	//连接除法模块和EX
+	wire[`DoubleRegBus] div_result;
+	wire div_ready;
+	wire[`RegBus] div_opdata1;
+	wire[`RegBus] div_opdata2;
+	wire div_start;
+	wire div_annul;
+	wire signed_div;
+
+	//暂停信号
 	wire[5:0] stall;
 	wire stallreq_from_id;	
 	wire stallreq_from_ex;
@@ -203,6 +213,9 @@ module top(
 
 		.hilo_temp_i(hilo_temp_i),
 	  	.cnt_i(cnt_i),
+
+		.div_res_i(div_result),
+		.div_done_i(div_ready), 
 	  
 	  //EX模块的输出到EX/MEM模块信息
 		.we_o(ex_wreg_o),
@@ -216,7 +229,28 @@ module top(
 		.hilo_temp_o(hilo_temp_o),
 		.cnt_o(cnt_o),
 
+		//EX模块输出到除法模块的信息
+		.div_reg1_o(div_opdata1),
+		.div_reg2_o(div_opdata2),
+		.div_start_o(div_start),
+		.div_sign_o(signed_div),	
+
 		.stallreq(stallreq_from_ex) 
+	);
+
+	//除法模块
+	div div0(
+		.clk(clk),
+		.rst(rst),
+	
+		.sign(signed_div),
+		.reg1(div_opdata1),
+		.reg2(div_opdata2),
+		.start(div_start),
+		.cancel(1'b0),
+	
+		.result(div_result),
+		.done(div_ready)
 	);
 
   //EX/MEM模块
@@ -249,7 +283,7 @@ module top(
 		.hilo_o(hilo_temp_i),
 		.cnt_o(cnt_i)
 	);
-	
+
   //MEM模块例化
 	MEM mem0(
 		.rst(rst),

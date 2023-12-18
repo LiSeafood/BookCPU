@@ -28,6 +28,10 @@ module EX(
     input  wire [`DoubleRegBus]  hilo_temp_i,
     input  wire [1:0]            cnt_i,
 
+    //来自除法模块的输入
+    input  wire [`DoubleRegBus]   div_res_i,//除法结果
+    input  wire                   div_done_i,//除法是否完成
+
     //EX段的指令对HI、LO寄存器的写操作请求
     output reg            hilo_o,
     output reg [`RegBus]  hi_o,
@@ -41,6 +45,12 @@ module EX(
     //乘累加、乘累减指令相关
     output reg [`DoubleRegBus]  hilo_temp_o,
     output reg [1:0]            cnt_o,
+
+    //去往除法模块的输出
+    output reg [`RegBus]        div_reg1_o,//被除数
+    output reg [`RegBus]        div_reg2_o,//除数
+    output reg                  div_start_o,//是否开始除法运算
+    output reg                  div_sign_o,//是否有符号
 
     output reg							stallreq//暂停请求
 );
@@ -90,7 +100,6 @@ module EX(
     wire [`DoubleRegBus]  hilo_temp;//临时保存乘法结果
     reg  [`DoubleRegBus]  hilo_temp1;
     reg  [`DoubleRegBus]  mulres;  //保存乘法结果
-    reg                   stallreq_m;
     
     //如果是有符号的乘法且被乘数为负，则取补码
     assign opdata1_mult=(((aluop==`EXE_MUL_OP)||
@@ -118,7 +127,8 @@ module EX(
         mulres<= hilo_temp;
       end
     end
-
+    
+    reg  stallreq_m;//是否因为乘累加、乘累减而暂停
     //乘累加、乘累减
     always @(*) begin
       if(rst)begin
@@ -161,9 +171,50 @@ module EX(
       end
     end
 
+    reg  stallreq_d;//是否因为除法而暂停
+    //除法
+    always @(*) begin
+      stallreq_d<=`NoStop;
+      div_reg1_o<=`zeroword;
+      div_reg2_o<=`zeroword;
+      div_start_o<=`DivStop;
+      div_sign_o<=1'b0;
+      if(!rst)begin
+        case (aluop)
+          `EXE_DIV_OP:begin//有符号除法
+            div_reg1_o<=reg1;
+            div_reg2_o<=reg2;
+            div_sign_o<=1'b1;
+            if(!div_done_i)begin//还没完成
+              div_start_o<=`DivStart;//开始！
+              stallreq_d<=`Stop;//请求流水线暂停
+            end else if(div_done_i)begin//已完成
+              div_start_o<=`DivStop;//停止
+              stallreq_d<=`NoStop;//流水线不再暂停
+            end
+          end 
+          `EXE_DIVU_OP:begin//有符号除法
+            div_reg1_o<=reg1;
+            div_reg2_o<=reg2;
+            div_sign_o<=1'b0;
+            if(!div_done_i)begin//还没完成
+              div_start_o<=`DivStart;//继续进行
+              stallreq_d<=`Stop;//请求流水线暂停
+            end else if(div_done_i)begin//已完成
+              div_start_o<=`DivStop;//停止
+              stallreq_d<=`NoStop;//流水线不再暂停
+            end
+          end 
+          default: begin
+            
+          end
+        endcase
+      end
+    end
+
     //暂停流水线
     always @(*) begin
-      stallreq=stallreq_m;
+      stallreq=stallreq_m || stallreq_d;
     end
 
     //ALU的运算
@@ -292,7 +343,7 @@ module EX(
       end
     end
 
-    //MTHI、MTLO指令对HI、LO寄存器的写操作
+    //对HI、LO寄存器的写操作
     always @(*) begin
       if(rst)begin
         hilo_o<=`writeDisable;
@@ -309,6 +360,10 @@ module EX(
         hilo_o<=`writeEnable;
         hi_o<=mulres[63:32];
         lo_o<=mulres[31:0];
+      end else if((aluop==`EXE_DIV_OP)||(aluop==`EXE_DIVU_OP))begin
+        hilo_o<=`writeEnable;
+        hi_o<=div_res_i[63:32];
+        lo_o<=div_res_i[31:0];
       end else if(aluop==`EXE_MTHI_OP)begin
         hilo_o<=`writeEnable;
         hi_o<=reg1;//写HI寄存器

@@ -250,6 +250,18 @@ module ID(
                     rt_read<=1'b1;
                     valid=`InstValid;
                   end
+                  `EXE_DIV:begin
+                    aluop<=`EXE_DIV_OP;
+                    rs_read<=1'b1;
+                    rt_read<=1'b1;
+                    valid=`InstValid;
+                  end
+                  `EXE_DIVU:begin
+                    aluop<=`EXE_DIVU_OP;
+                    rs_read<=1'b1;
+                    rt_read<=1'b1;
+                    valid=`InstValid;
+                  end
                   default :begin
                     
                   end
