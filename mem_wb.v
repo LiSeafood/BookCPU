@@ -3,6 +3,7 @@
 module mem_wb(
 	input wire					clk,
 	input wire					rst,
+	input wire [5:0]			stall,
 	
 	//来自访存阶段的信息	
 	input wire[`RegAddrBus]       mem_wd,
@@ -22,14 +23,14 @@ module mem_wb(
 );
 
 	always @ (posedge clk) begin
-		if(rst == `RstEnable) begin
+		if(rst||(stall[4]&&!stall[5])) begin
 		  wb_wd <= `NOPRegAddr;
 		  wb_wreg <= `writeDisable;
 		  wb_wdata <= `zeroword;	
 		  wb_hi<=`zeroword;
 		  wb_lo<=`zeroword;
 		  wb_hilo<=`writeDisable;
-		end else begin
+		end else if(!stall[4])begin
 		  wb_wd <= mem_wd;
 		  wb_wreg <= mem_wreg;
 		  wb_wdata <= mem_wdata;

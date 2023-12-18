@@ -73,10 +73,22 @@ module top(
 	wire[`RegBus] 	hi;
 	wire[`RegBus]   lo;
 
+	//连接执行阶段与ex_reg模块，用于多周期的MADD、MADDU、MSUB、MSUBU指令
+	wire[`DoubleRegBus] hilo_temp_o;
+	wire[1:0] cnt_o;
+	
+	wire[`DoubleRegBus] hilo_temp_i;
+	wire[1:0] cnt_i;
+
+	wire[5:0] stall;
+	wire stallreq_from_id;	
+	wire stallreq_from_ex;
+
   //IF例化
 	IF if0(
 		.clk(clk),
 		.rst(rst),
+		.stall(stall),
 		.pc(pc),
 		.ce(rom_ce_o)	
 	);
@@ -87,6 +99,7 @@ module top(
 	if_id if_id0(
 		.clk(clk),
 		.rst(rst),
+		.stall(stall),
 		.if_pc(pc),
 		.if_inst(rom_data_i),
 		.id_pc(id_pc_i),
@@ -124,7 +137,9 @@ module top(
 		.reg1(id_reg1_o),
 		.reg2(id_reg2_o),
 		.w_addr(id_wd_o),
-		.we(id_wreg_o)
+		.we(id_wreg_o),
+
+		.stallreq(stallreq_from_id)
 	);
 
   //通用寄存器Regfile例化
@@ -146,6 +161,7 @@ module top(
 	id_ex id_ex0(
 		.clk(clk),
 		.rst(rst),
+		.stall(stall),		
 		
 		//从译码阶段ID模块传递的信息
 		.id_aluop(id_aluop_o),
@@ -184,6 +200,9 @@ module top(
 		.mem_hi_i(mem_hi_o),
 		.mem_lo_i(mem_lo_o),
 		.mem_hilo_i(mem_whilo_o),
+
+		.hilo_temp_i(hilo_temp_i),
+	  	.cnt_i(cnt_i),
 	  
 	  //EX模块的输出到EX/MEM模块信息
 		.we_o(ex_wreg_o),
@@ -192,13 +211,19 @@ module top(
 
 		.hi_o(ex_hi_o),
 		.lo_o(ex_lo_o),
-		.hilo_o(ex_whilo_o)
+		.hilo_o(ex_whilo_o),
+
+		.hilo_temp_o(hilo_temp_o),
+		.cnt_o(cnt_o),
+
+		.stallreq(stallreq_from_ex) 
 	);
 
   //EX/MEM模块
   ex_mem ex_mem0(
 		.clk(clk),
 		.rst(rst),
+		.stall(stall),
 	  
 		//来自执行阶段EX模块的信息	
 		.ex_wd(ex_wd_o),
@@ -208,14 +233,21 @@ module top(
 		.ex_lo(ex_lo_o),
 		.ex_hilo(ex_whilo_o),	
 
+		//为了乘累加、乘累减指令增加的输入口
+		.hilo_i(hilo_temp_o),
+		.cnt_i(cnt_o),	
+
 		//送到访存阶段MEM模块的信息
 		.mem_wd(mem_wd_i),
 		.mem_wreg(mem_wreg_i),
 		.mem_wdata(mem_wdata_i),
 		.mem_hi(mem_hi_i),
 		.mem_lo(mem_lo_i),
-		.mem_hilo(mem_whilo_i)		
-						       	
+		.mem_hilo(mem_whilo_i),	
+
+		//为了乘累加、乘累减指令增加的输出口	       	
+		.hilo_o(hilo_temp_i),
+		.cnt_o(cnt_i)
 	);
 	
   //MEM模块例化
@@ -243,6 +275,7 @@ module top(
 	mem_wb mem_wb0(
 		.clk(clk),
 		.rst(rst),
+		.stall(stall),
 
 		//来自访存阶段MEM模块的信息	
 		.mem_wd(mem_wd_o),
@@ -275,6 +308,13 @@ module top(
 		//读端口1
 		.hi_o(hi),
 		.lo_o(lo)	
+	);
+
+	ctrl ctrl0(
+	.rst(rst),
+	.id_stall(stallreq_from_id),
+	.ex_stall(stallreq_from_ex),
+	.stall(stall)       	
 	);
 
 endmodule

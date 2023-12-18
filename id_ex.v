@@ -3,6 +3,7 @@
 module id_ex(
 	input	wire				clk,
 	input   wire				rst,
+    input  wire [5:0] 			stall,
 	
 	//从译码阶段传递的信息
 	input wire[`AluOpBus]         id_aluop,
@@ -22,21 +23,21 @@ module id_ex(
 );
 
 	always @ (posedge clk) begin
-		if (rst == `RstEnable) begin//复位则全为0
+		if (rst||(stall[2]&&!stall[3])) begin//传递空信号
 			ex_aluop <= `EXE_NOP_OP;
 			ex_alusel <= `EXE_RES_NOP;
 			ex_reg1 <= `zeroword;
 			ex_reg2 <= `zeroword;
 			ex_wd <= `NOPRegAddr;
 			ex_wreg <= `writeDisable;
-		end else begin		//否则向下传递
+		end else if(!stall[2])begin		//否则向下传递
 			ex_aluop <= id_aluop;
 			ex_alusel <= id_alusel;
 			ex_reg1 <= id_reg1;
 			ex_reg2 <= id_reg2;
 			ex_wd <= id_wd;
 			ex_wreg <= id_wreg;		
-		end
+		end//其余情况保持寄存器不变
 	end
 	
 endmodule

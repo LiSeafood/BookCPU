@@ -3,17 +3,10 @@
 module IF(
     input wire                  clk,//时钟信号
     input wire                  rst,//复位信号
+    input  wire [5:0]           stall,//暂停信号
     output reg[`InstAddrBus]    pc,
     output reg                  ce
 );
-
-    always @ (posedge clk) begin
-        if (rst) begin
-            pc <= 32'hbfbf_fffc;//复位时pc这个值，再+4就会变成0
-        end else begin
-            pc <= pc + 4'h4;//pc每周期+4
-        end
-    end
 
     always @ (posedge clk) begin
         if (rst) begin
@@ -22,4 +15,13 @@ module IF(
             ce <= 1'b1;//指令存储器可用
         end
     end
+
+    always @ (posedge clk) begin
+        if (!ce) begin
+            pc <= 32'hbfb00000;
+        end else if(!stall[0])begin
+            pc <= pc + 4'h4;//pc每周期+4
+        end
+    end
+
 endmodule

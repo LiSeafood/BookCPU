@@ -30,7 +30,9 @@ module ID(
     output reg [`RegBus]        reg1,   //操作数1
     output reg [`RegBus]        reg2,   //操作数2
     output reg [`RegAddrBus]    w_addr, //ID的指令要写入的目的寄存器地址
-    output reg                  we      //ID的指令是否要写入目的寄存器
+    output reg                  we,     //ID的指令是否要写入目的寄存器
+
+	  output wire                 stallreq//暂停请求
 );
 
     //取得指令的指令码和功能码，用于判断是什么指令
@@ -41,6 +43,8 @@ module ID(
 
     reg[`RegBus] imm;//立即数
     reg valid;//指令是否有效（这变量感觉没有用啊喂）
+    
+    assign stallreq = `NoStop;//不暂停？怎么后续没有控制了呢
 
     //译码
     always @(*) begin//先赋初值，都赋为0
@@ -278,6 +282,30 @@ module ID(
                 we<=`writeEnable;
                 aluop<=`EXE_MUL_OP;
                 alusel<=`EXE_RES_ARITHMETIC;
+                rs_read<=1'b1;
+                rt_read<=1'b1;
+                valid=`InstValid;
+              end
+              `EXE_MADD:begin
+                aluop<=`EXE_MADD_OP;
+                rs_read<=1'b1;
+                rt_read<=1'b1;
+                valid=`InstValid;
+              end
+              `EXE_MADDU:begin
+                aluop<=`EXE_MADDU_OP;
+                rs_read<=1'b1;
+                rt_read<=1'b1;
+                valid=`InstValid;
+              end
+              `EXE_MSUB:begin
+                aluop<=`EXE_MSUB_OP;
+                rs_read<=1'b1;
+                rt_read<=1'b1;
+                valid=`InstValid;
+              end
+              `EXE_MSUBU:begin
+                aluop<=`EXE_MSUBU_OP;
                 rs_read<=1'b1;
                 rt_read<=1'b1;
                 valid=`InstValid;
