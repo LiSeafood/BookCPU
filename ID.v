@@ -68,7 +68,7 @@ module ID(
     //译码
     always @(*) begin//先赋初值，都赋为0
       aluop   <= `EXE_NOP_OP;
-      alusel  <= `EXE_RES_NOP;//说真的我觉得这个也没用
+      alusel  <= `EXE_RES_NOP;
       we      <= `writeDisable;
       rs_read <= 1'b0;
       rt_read <= 1'b0;
