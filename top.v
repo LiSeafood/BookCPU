@@ -157,6 +157,9 @@ module top (
       .rs_data(reg1_data),
       .rt_data(reg2_data),
 
+      //load相关定向
+      .ex_aluop_i(ex_aluop_o),
+
       //处于EX阶段的指令要写入的目的寄存器信息
       .ex_we(ex_wreg_o),
       .ex_w_data(ex_wdata_o),
