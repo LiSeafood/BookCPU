@@ -244,7 +244,7 @@
 `define InstMemNum      131071//ROM的实际大小为128KB
 `define InstMemNumLog2  17//ROM 实际使用的地址线宽度
 
-//Êý¾Ý´æ´¢Æ÷data_ram
+//*****************与数据寄存器ROM有关的宏定义*************
 `define DataAddrBus 31:0
 `define DataBus 31:0
 `define DataMemNum 131071
