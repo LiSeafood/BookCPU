@@ -3,13 +3,13 @@ module EX (
     input wire rst,
 
     //id_ex段送来的信息
-    input wire [`AluOpBus] aluop,
-    input wire [`AluSelBus] alusel,
-    input wire [`RegBus] reg1,
-    input wire [`RegBus] reg2,
-    input wire [`RegBus] inst_i,
+    input wire [  `AluOpBus] aluop,
+    input wire [ `AluSelBus] alusel,
+    input wire [    `RegBus] reg1,
+    input wire [    `RegBus] reg2,
+    input wire [    `RegBus] inst_i,
     input wire [`RegAddrBus] w_addr_i,
-    input wire we_i,
+    input wire               we_i,
 
     //HILO模块传来的HI、LO寄存器的值
     input wire [`RegBus] hi_i,
@@ -39,15 +39,34 @@ module EX (
     //当前EX段的指令是否位于延迟槽
     input wire is_in_delayslot_i,
 
+    //访存阶段的指令是否要写CP0，用来检测数据相关
+    input wire           mem_cp0_reg_we,
+    input wire [    4:0] mem_cp0_reg_write_addr,
+    input wire [`RegBus] mem_cp0_reg_data,
+
+    //回写阶段的指令是否要写CP0，用来检测数据相关
+    input wire           wb_cp0_reg_we,
+    input wire [    4:0] wb_cp0_reg_write_addr,
+    input wire [`RegBus] wb_cp0_reg_data,
+
+    //与CP0相连，读取其中CP0寄存器的值
+    input  wire [`RegBus] cp0_reg_data_i,
+    output reg  [    4:0] cp0_reg_read_addr_o,
+
+    //向下一流水级传递，用于写CP0中的寄存器
+    output reg           cp0_reg_we_o,
+    output reg [    4:0] cp0_reg_write_addr_o,
+    output reg [`RegBus] cp0_reg_data_o,
+
     //EX段的指令对HI、LO寄存器的写操作请求
     output reg           hilo_o,
     output reg [`RegBus] hi_o,
     output reg [`RegBus] lo_o,
 
     //EX段的执行结果
-    output reg we_o,//运算结果最终是否要写入
-    output reg [`RegAddrBus]    w_addr_o,//执行指令最终要写入的寄存器地址
-    output reg [`RegBus]    w_data_o,//运算结果的值
+    output reg               we_o,      //运算结果最终是否要写入
+    output reg [`RegAddrBus] w_addr_o,  //执行指令最终要写入的寄存器地址
+    output reg [    `RegBus] w_data_o,  //运算结果的值
 
     //乘累加、乘累减指令相关
     output reg [`DoubleRegBus] hilo_temp_o,
@@ -68,13 +87,13 @@ module EX (
 );
 
   //aluop_o传递到访存阶段，用于加载、存储指令
-  assign aluop_o = aluop;
+  assign aluop_o    = aluop;
 
   //mem_addr传递到访存阶段，是加载、存储指令对应的存储器地址
   assign mem_addr_o = reg1 + {{16{inst_i[15]}}, inst_i[15:0]};
 
   //将两个操作数也传递到访存阶段，也是为记载、存储指令准备的
-  assign reg2_o = reg2;
+  assign reg2_o     = reg2;
 
   reg [`RegBus] HI;  //保存HI的最新值
   reg [`RegBus] LO;  //保存LO的最新值
@@ -101,10 +120,7 @@ module EX (
   wire [`RegBus] sum_res;  //保存加法结果
 
   //减法或符号比较运算，则reg2_mux就等于第二个操作数的补码
-  assign reg2_mux=((aluop==`EXE_SUB_OP)||
-                     (aluop==`EXE_SUBU_OP)||
-                     (aluop==`EXE_SLT_OP))?
-                    (~reg2)+1:reg2;//否则等于第二个操作数
+  assign reg2_mux = ((aluop == `EXE_SUB_OP) || (aluop == `EXE_SUBU_OP) || (aluop == `EXE_SLT_OP)) ? (~reg2) + 1 : reg2;  //否则等于第二个操作数
   assign sum_res = reg1 + reg2_mux;  //加、减、符号比较运算的结果
   assign ov_sum  = ((!reg1[31] && !reg2_mux[31])&& sum_res[31])||//两正之和得负数，溢出
                      ((reg1[31]  && reg2_mux[31]) && !sum_res[31]);//两负之和得正数，溢出
@@ -116,33 +132,21 @@ module EX (
   assign reg1_not = ~reg1;  //reg1逐位取反
 
   //乘法运算
-  wire [`RegBus] opdata1_mult;  //乘法中的被乘数
-  wire [`RegBus] opdata2_mult;  //乘法中的乘数
+  wire [      `RegBus] opdata1_mult;  //乘法中的被乘数
+  wire [      `RegBus] opdata2_mult;  //乘法中的乘数
   wire [`DoubleRegBus] hilo_temp;  //临时保存乘法结果
-  reg [`DoubleRegBus] hilo_temp1;
-  reg [`DoubleRegBus] mulres;  //保存乘法结果
+  reg  [`DoubleRegBus] hilo_temp1;
+  reg  [`DoubleRegBus] mulres;  //保存乘法结果
 
   //如果是有符号的乘法且被乘数为负，则取补码
-  assign opdata1_mult=(((aluop==`EXE_MUL_OP)||
-                          (aluop==`EXE_MULT_OP)||
-                          (aluop==`EXE_MADD_OP)||
-                          (aluop==`EXE_MSUB_OP))&&reg1[31])?
-                          (reg1_not+1):reg1;
+  assign opdata1_mult = (((aluop == `EXE_MUL_OP) || (aluop == `EXE_MULT_OP) || (aluop == `EXE_MADD_OP) || (aluop == `EXE_MSUB_OP)) && reg1[31]) ? (reg1_not + 1) : reg1;
   //如果是有符号的乘法且乘数为负，则取补码
-  assign opdata2_mult=(((aluop==`EXE_MUL_OP)||
-                          (aluop==`EXE_MULT_OP)||
-                          (aluop==`EXE_MADD_OP)||
-                          (aluop==`EXE_MSUB_OP))&&reg2[31])?
-                          (~reg2+1):reg2;
-  assign hilo_temp = opdata1_mult * opdata2_mult;  //临时的乘法结果
+  assign opdata2_mult = (((aluop == `EXE_MUL_OP) || (aluop == `EXE_MULT_OP) || (aluop == `EXE_MADD_OP) || (aluop == `EXE_MSUB_OP)) && reg2[31]) ? (~reg2 + 1) : reg2;
+  assign hilo_temp    = opdata1_mult * opdata2_mult;  //临时的乘法结果
   always @(*) begin  //调整最终乘法结果
     if (rst) begin
       mulres <= {`zeroword, `zeroword};
-    end else if(((aluop==`EXE_MULT_OP)||
-                   (aluop==`EXE_MUL_OP)||
-                   (aluop==`EXE_MADD_OP)||
-                   (aluop==`EXE_MSUB_OP))&&
-                   (reg1[31]^reg2[31]))begin
+    end else if (((aluop == `EXE_MULT_OP) || (aluop == `EXE_MUL_OP) || (aluop == `EXE_MADD_OP) || (aluop == `EXE_MSUB_OP)) && (reg1[31] ^ reg2[31])) begin
       mulres <= ~hilo_temp + 1;  //对临时结果取补码
     end else begin
       mulres <= hilo_temp;
@@ -154,39 +158,39 @@ module EX (
   always @(*) begin
     if (rst) begin
       hilo_temp_o <= {`zeroword, `zeroword};
-      cnt_o <= 2'b0;
-      stallreq_m <= `NoStop;
+      cnt_o       <= 2'b0;
+      stallreq_m  <= `NoStop;
     end else begin
       case (aluop)
         `EXE_MADD_OP, `EXE_MADDU_OP: begin
           if (cnt_i == 2'b00) begin  //第一个时钟周期
             hilo_temp_o <= mulres;
-            cnt_o <= 2'b01;
-            hilo_temp1 <= {`zeroword, `zeroword};
-            stallreq_m <= `Stop;
+            cnt_o       <= 2'b01;
+            hilo_temp1  <= {`zeroword, `zeroword};
+            stallreq_m  <= `Stop;
           end else if (cnt_i == 2'b01) begin  //第二个时钟周期
             hilo_temp_o <= {`zeroword, `zeroword};
-            cnt_o <= 2'b10;
-            hilo_temp1 <= hilo_temp_i + {HI, LO};
-            stallreq_m <= `NoStop;
+            cnt_o       <= 2'b10;
+            hilo_temp1  <= hilo_temp_i + {HI, LO};
+            stallreq_m  <= `NoStop;
           end
         end
         `EXE_MSUB_OP, `EXE_MSUBU_OP: begin
           if (cnt_i == 2'b00) begin  //第一个时钟周期
             hilo_temp_o <= ~mulres + 1;
-            cnt_o <= 2'b01;
-            stallreq_m <= `Stop;
+            cnt_o       <= 2'b01;
+            stallreq_m  <= `Stop;
           end else if (cnt_i == 2'b01) begin  //第二个时钟周期
             hilo_temp_o <= {`zeroword, `zeroword};
-            cnt_o <= 2'b10;
-            hilo_temp1 <= hilo_temp_i + {HI, LO};
-            stallreq_m <= `NoStop;
+            cnt_o       <= 2'b10;
+            hilo_temp1  <= hilo_temp_i + {HI, LO};
+            stallreq_m  <= `NoStop;
           end
         end
         default: begin
           hilo_temp_o <= {`zeroword, `zeroword};
-          cnt_o <= 2'b00;
-          stallreq_m <= `NoStop;
+          cnt_o       <= 2'b00;
+          stallreq_m  <= `NoStop;
         end
       endcase
     end
@@ -241,7 +245,7 @@ module EX (
   //ALU的运算
   always @(*) begin
     w_addr_o <= w_addr_i;
-    if(((aluop==`EXE_ADD_OP)||(aluop==`EXE_ADDI_OP)||(aluop==`EXE_SUB_OP))&& ov_sum)begin
+    if (((aluop == `EXE_ADD_OP) || (aluop == `EXE_ADDI_OP) || (aluop == `EXE_SUB_OP)) && ov_sum) begin
       we_o <= `writeDisable;  //有溢出，不写啦
     end else begin
       we_o <= we_i;
@@ -283,11 +287,20 @@ module EX (
         `EXE_SLT_OP, `EXE_SLTU_OP: begin  //比较
           w_data_o <= reg1_lt_reg2;
         end
-        `EXE_ADD_OP,`EXE_ADDU_OP,`EXE_ADDI_OP,`EXE_ADDIU_OP,`EXE_SUB_OP,`EXE_SUBU_OP:begin//加、减
+        `EXE_ADD_OP, `EXE_ADDU_OP, `EXE_ADDI_OP, `EXE_ADDIU_OP, `EXE_SUB_OP, `EXE_SUBU_OP: begin  //加、减
           w_data_o <= sum_res;
         end
         `EXE_MULT_OP, `EXE_MUL_OP, `EXE_MULTU_OP: begin  //乘法
           w_data_o <= mulres[31:0];
+        end
+        `EXE_MFC0_OP: begin
+          cp0_reg_read_addr_o <= inst_i[15:11];//要读的cp0里的地址
+          w_data_o            <= cp0_reg_data_i;//读来的数据
+          if (mem_cp0_reg_we == `writeEnable && mem_cp0_reg_write_addr == inst_i[15:11]) begin
+            w_data_o <= mem_cp0_reg_data;//和MEM段有数据相关喔
+          end else if (wb_cp0_reg_we == `writeEnable && wb_cp0_reg_write_addr == inst_i[15:11]) begin
+            w_data_o <= wb_cp0_reg_data;//和WB段有数据相关喔
+          end
         end
         `EXE_CLZ_OP: begin  //计数clz
           w_data_o<=reg1[31] ? 0  : 
@@ -373,10 +386,7 @@ module EX (
       hilo_o <= `writeDisable;
       hi_o   <= `zeroword;
       lo_o   <= `zeroword;
-    end else if((aluop==`EXE_MSUB_OP) ||
-                  (aluop==`EXE_MSUBU_OP)||
-                  (aluop==`EXE_MADD_OP) ||
-                  (aluop==`EXE_MADDU_OP))begin
+    end else if ((aluop == `EXE_MSUB_OP) || (aluop == `EXE_MSUBU_OP) || (aluop == `EXE_MADD_OP) || (aluop == `EXE_MADDU_OP)) begin
       hilo_o <= `writeEnable;
       hi_o   <= hilo_temp1[63:32];
       lo_o   <= hilo_temp1[31:0];
@@ -403,4 +413,19 @@ module EX (
     end
   end
 
+  always @ (*) begin
+		if(rst == `RstEnable) begin
+			cp0_reg_write_addr_o <= 5'b00000;
+			cp0_reg_we_o <= `writeDisable;
+			cp0_reg_data_o <= `zeroword;
+		end else if(aluop == `EXE_MTC0_OP) begin
+			cp0_reg_write_addr_o <= inst_i[15:11];
+			cp0_reg_we_o <= `writeEnable;
+			cp0_reg_data_o <= reg1;
+	  end else begin
+			cp0_reg_write_addr_o <= 5'b00000;
+			cp0_reg_we_o <= `writeDisable;
+			cp0_reg_data_o <= `zeroword;
+		end				
+	end		
 endmodule

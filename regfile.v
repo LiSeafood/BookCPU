@@ -19,9 +19,10 @@ module regfile(
 
     reg [31:0] reg_array [31:0];//32个32位寄存器
     initial reg_array [32'h0]=32'h0;
+
     // 写端口的操作
     always @ (posedge clk) begin
-        if(rst == `RstDisable)begin
+        if(!rst)begin
           if (we && waddr!=5'b0) begin
             reg_array[waddr] <= wdata;
           end//不复位、可写、写入数据非空时写入

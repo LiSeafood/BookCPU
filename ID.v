@@ -777,6 +777,24 @@ module ID (
           valid = `InstValid;
         end
       end
+
+      if (inst[31:21] == 11'b01000000000 && inst[10:0] == 11'b00000000000) begin  //cp0访问指令
+        aluop   <= `EXE_MFC0_OP;//读取cp0写入rt
+        alusel  <= `EXE_RES_MOVE;
+        w_addr  <= inst[20:16];
+        we      <= `writeEnable;
+        valid   <= `InstValid;
+        rs_read <= 1'b0;
+        rt_read <= 1'b0;
+      end else if (inst[31:21] == 11'b01000000100 && inst[10:0] == 11'b00000000000) begin
+        aluop   <= `EXE_MTC0_OP;//读rt输入cp0
+        alusel  <= `EXE_RES_NOP;
+        we      <= `writeDisable;
+        valid   <= `InstValid;
+        rs_read <= 1'b1;
+        rs_addr <= inst[20:16];
+        rt_read <= 1'b0;
+      end
     end  //if
   end  //always
 

@@ -12,14 +12,6 @@ module IF (
 );
 
   always @(posedge clk) begin
-    if (rst) begin
-      ce <= 1'b0;  //复位时禁用指令存储器
-    end else begin
-      ce <= 1'b1;  //指令存储器可用
-    end
-  end
-
-  always @(posedge clk) begin
     if (!ce) begin
       pc <= 32'hbfc00000;
     end else if (!stall[0]) begin
@@ -31,4 +23,12 @@ module IF (
     end
   end
 
+  always @(posedge clk) begin
+    if (rst) begin
+      ce <= 1'b0;  //复位时禁用指令存储器
+    end else begin
+      ce <= 1'b1;  //指令存储器可用
+    end
+  end
+  
 endmodule
