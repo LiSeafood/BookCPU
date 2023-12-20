@@ -46,10 +46,21 @@ module ID (
     output reg           delay_o,      //当前指令是否是延迟槽指令    
     output reg           next_delay_o, //下一条指令是不是延迟槽指令
 
+    output wire [   31:0] excepttype_o,           //收集到的异常信息
+    output wire [`RegBus] current_inst_address_o, //译码阶段指令的地址
+
     output wire stallreq  //暂停请求
 );
 
-  assign inst_o = inst;  //向下传递指令
+  reg excepttype_is_syscall;
+  reg excepttype_is_eret;
+  //exceptiontype的低8bit留给外部中断，第9bit表示是否是syscall指令
+  //第10bit表示是否是无效指令，第11bit表示是否是trap指令
+  assign excepttype_o           = {19'b0, excepttype_is_eret, 2'b0, valid, excepttype_is_syscall, 8'b0};
+
+  assign current_inst_address_o = pc;  //当前译码的指令的地址就是pc
+
+  assign inst_o                 = inst;  //向下传递指令
 
   //转移指令相关
   wire [`RegBus] pc_plus_8;
@@ -67,7 +78,7 @@ module ID (
   wire [    4:0 ] op4 = inst[20:16];
 
   reg  [`RegBus]                                 imm;  //立即数
-  reg                                            valid;  //指令是否有效（这变量感觉没有用啊喂）
+  reg                                            valid;
 
   //解决load相关问题
   reg                                            stallreq_for_reg1_loadrelate;  //reg1是否与上一条指令有load相关
@@ -86,16 +97,18 @@ module ID (
 
   //译码
   always @(*) begin  //先赋初值，都赋为0
-    aluop        <= `EXE_NOP_OP;
-    alusel       <= `EXE_RES_NOP;
-    we           <= `writeDisable;
-    rs_read      <= 1'b0;
-    rt_read      <= 1'b0;
-    imm          <= `zeroword;
-    link_addr    <= `zeroword;
-    b_addr       <= `zeroword;
-    branch       <= `NotBranch;
-    next_delay_o <= `NotInDelaySlot;
+    aluop                 <= `EXE_NOP_OP;
+    alusel                <= `EXE_RES_NOP;
+    we                    <= `writeDisable;
+    rs_read               <= 1'b0;
+    rt_read               <= 1'b0;
+    imm                   <= `zeroword;
+    link_addr             <= `zeroword;
+    b_addr                <= `zeroword;
+    branch                <= `NotBranch;
+    next_delay_o          <= `NotInDelaySlot;
+    excepttype_is_syscall <= `False_v;
+    excepttype_is_eret    <= `False_v;
     if (rst) begin  //复位的话这些都是0
       w_addr  <= `NOPRegAddr;
       rs_addr <= `NOPRegAddr;
@@ -112,6 +125,72 @@ module ID (
           case (op2)
             5'b00000: begin
               case (op3)
+                `EXE_TEQ: begin
+                  we      <= `writeDisable;
+                  aluop   <= `EXE_TEQ_OP;
+                  alusel  <= `EXE_RES_NOP;
+                  rs_read <= 1'b0;
+                  rt_read <= 1'b0;
+                  valid   <= `InstValid;
+                end
+                `EXE_TGE: begin
+                  we      <= `writeDisable;
+                  aluop   <= `EXE_TGE_OP;
+                  alusel  <= `EXE_RES_NOP;
+                  rs_read <= 1'b1;
+                  rt_read <= 1'b1;
+                  valid   <= `InstValid;
+                end
+                `EXE_TGEU: begin
+                  we      <= `writeDisable;
+                  aluop   <= `EXE_TGEU_OP;
+                  alusel  <= `EXE_RES_NOP;
+                  rs_read <= 1'b1;
+                  rt_read <= 1'b1;
+                  valid   <= `InstValid;
+                end
+                `EXE_TLT: begin
+                  we      <= `writeDisable;
+                  aluop   <= `EXE_TLT_OP;
+                  alusel  <= `EXE_RES_NOP;
+                  rs_read <= 1'b1;
+                  rt_read <= 1'b1;
+                  valid   <= `InstValid;
+                end
+                `EXE_TLTU: begin
+                  we      <= `writeDisable;
+                  aluop   <= `EXE_TLTU_OP;
+                  alusel  <= `EXE_RES_NOP;
+                  rs_read <= 1'b1;
+                  rt_read <= 1'b1;
+                  valid   <= `InstValid;
+                end
+                `EXE_TNE: begin
+                  we      <= `writeDisable;
+                  aluop   <= `EXE_TNE_OP;
+                  alusel  <= `EXE_RES_NOP;
+                  rs_read <= 1'b1;
+                  rt_read <= 1'b1;
+                  valid   <= `InstValid;
+                end
+                `EXE_SYSCALL: begin
+                  we                    <= `writeDisable;
+                  aluop                 <= `EXE_SYSCALL_OP;
+                  alusel                <= `EXE_RES_NOP;
+                  rs_read               <= 1'b0;
+                  rt_read               <= 1'b0;
+                  valid                 <= `InstValid;
+                  excepttype_is_syscall <= `True_v;
+                end
+                `EXE_BREAK: begin  //break因为我不会做只好跟syscall一样了
+                  we                    <= `writeDisable;
+                  aluop                 <= `EXE_SYSCALL_OP;
+                  alusel                <= `EXE_RES_NOP;
+                  rs_read               <= 1'b0;
+                  rt_read               <= 1'b0;
+                  valid                 <= `InstValid;
+                  excepttype_is_syscall <= `True_v;
+                end
                 `EXE_OR: begin
                   we      <= `writeEnable;  //需要写
                   aluop   <= `EXE_OR_OP;  //子运算：或
@@ -397,6 +476,60 @@ module ID (
 
         `EXE_REGIMM_INST: begin
           case (op4)
+            `EXE_TEQI: begin
+              we      <= `writeDisable;
+              aluop   <= `EXE_TEQI_OP;
+              alusel  <= `EXE_RES_NOP;
+              rs_read <= 1'b1;
+              rt_read <= 1'b0;
+              imm     <= {{16{inst[15]}}, inst[15:0]};
+              valid   <= `InstValid;
+            end
+            `EXE_TGEI: begin
+              we      <= `writeDisable;
+              aluop   <= `EXE_TGEI_OP;
+              alusel  <= `EXE_RES_NOP;
+              rs_read <= 1'b1;
+              rt_read <= 1'b0;
+              imm     <= {{16{inst[15]}}, inst[15:0]};
+              valid   <= `InstValid;
+            end
+            `EXE_TGEIU: begin
+              we      <= `writeDisable;
+              aluop   <= `EXE_TGEIU_OP;
+              alusel  <= `EXE_RES_NOP;
+              rs_read <= 1'b1;
+              rt_read <= 1'b0;
+              imm     <= {{16{inst[15]}}, inst[15:0]};
+              valid   <= `InstValid;
+            end
+            `EXE_TLTI: begin
+              we      <= `writeDisable;
+              aluop   <= `EXE_TLTI_OP;
+              alusel  <= `EXE_RES_NOP;
+              rs_read <= 1'b1;
+              rt_read <= 1'b0;
+              imm     <= {{16{inst[15]}}, inst[15:0]};
+              valid   <= `InstValid;
+            end
+            `EXE_TLTIU: begin
+              we      <= `writeDisable;
+              aluop   <= `EXE_TLTIU_OP;
+              alusel  <= `EXE_RES_NOP;
+              rs_read <= 1'b1;
+              rt_read <= 1'b0;
+              imm     <= {{16{inst[15]}}, inst[15:0]};
+              valid   <= `InstValid;
+            end
+            `EXE_TNEI: begin
+              we      <= `writeDisable;
+              aluop   <= `EXE_TNEI_OP;
+              alusel  <= `EXE_RES_NOP;
+              rs_read <= 1'b1;
+              rt_read <= 1'b0;
+              imm     <= {{16{inst[15]}}, inst[15:0]};
+              valid   <= `InstValid;
+            end
             `EXE_BGEZ: begin
               we      <= `writeDisable;
               aluop   <= `EXE_BGEZ_OP;
@@ -778,8 +911,16 @@ module ID (
         end
       end
 
-      if (inst[31:21] == 11'b01000000000 && inst[10:0] == 11'b00000000000) begin  //cp0访问指令
-        aluop   <= `EXE_MFC0_OP;//读取cp0写入rt
+      if (inst == `EXE_ERET) begin
+        we                 <= `writeDisable;
+        aluop              <= `EXE_ERET_OP;
+        alusel             <= `EXE_RES_NOP;
+        rs_read            <= 1'b0;
+        rt_read            <= 1'b0;
+        valid              <= `InstValid;
+        excepttype_is_eret <= `True_v;
+      end else if (inst[31:21] == 11'b01000000000 && inst[10:0] == 11'b00000000000) begin  //cp0访问指令
+        aluop   <= `EXE_MFC0_OP;  //读取cp0写入rt
         alusel  <= `EXE_RES_MOVE;
         w_addr  <= inst[20:16];
         we      <= `writeEnable;
@@ -787,7 +928,7 @@ module ID (
         rs_read <= 1'b0;
         rt_read <= 1'b0;
       end else if (inst[31:21] == 11'b01000000100 && inst[10:0] == 11'b00000000000) begin
-        aluop   <= `EXE_MTC0_OP;//读rt输入cp0
+        aluop   <= `EXE_MTC0_OP;  //读rt输入cp0
         alusel  <= `EXE_RES_NOP;
         we      <= `writeDisable;
         valid   <= `InstValid;
@@ -847,7 +988,4 @@ module ID (
     end
   end
 
-  //我总感觉valid这变量没卵用，只起到了挤占内存、增加代码量的作用。
-  //我打算在所有的指令都加上后，如果这个还是没有表现出作用来，就尝试把它删了。
-  //希望我到时候记得这件事吧。如果这三行注释没删掉，那我应该就是忘了
 endmodule

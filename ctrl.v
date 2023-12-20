@@ -1,24 +1,57 @@
 `include "defines.v"
-//这个模块旨在控制流水线的暂停，包括stall信号的产生和传递
-//所以这个模块跳出三界之外，不在五段之中。当然，它还是受top.v控制的。
-//这版CPU只能从ID和EX段接受暂停信号，因为其它的操作都可以在一个时钟周期内完成
-//有没有觉得这个原因很捞？我也觉得。不过我参考的书籍就是这么设计的。
 module ctrl (
-    input  wire rst,
-    input  wire id_stall,   //来自ID段的暂停信号
-    input  wire ex_stall,   //来自EX段的暂停信号
-    output reg [5:0] stall  //发往各段的暂停信号
+    input wire rst,
+    input wire id_stall,  //来自ID段的暂停信号
+    input wire ex_stall,  //来自EX段的暂停信号
+
+    input wire [   31:0] excepttype_i,  //发生的异常类型
+    input wire [`RegBus] cp0_epc_i,     //epc寄存器的值
+
+    output reg [`RegBus] new_pc,  //异常处理入口地址
+    output reg           flush,   //是否要清除流水线
+    output reg [    5:0] stall    //发往各段的暂停信号
 );
 
-    always @(*) begin
-        if(rst)begin
-          stall <= 6'b000000;
-        end else if(ex_stall)begin
-          stall <= 6'b001111;//把EX段和它前面的阶段都暂停
-        end else if(id_stall)begin
-         stall  <= 6'b000111;//把ID段和它前面的阶段都暂停
-        end else begin
-          stall <= 6'b000000;
+  always @(*) begin
+    if (rst) begin
+      stall  <= 6'b000000;
+      flush  <= 1'b0;
+      new_pc <= `zeroword;
+    end else if (excepttype_i != `zeroword) begin  //发生异常
+      flush <= 1'b1;
+      stall <= 6'b000000;
+      case (excepttype_i)
+        32'h00000001: begin  //中断
+          new_pc <= 32'h00000020;
         end
-    end
-endmodule //ctrl
+        32'h00000008: begin  //syscall或者break
+          new_pc <= 32'h00000040;
+        end
+        32'h0000000a: begin  //无效的指令
+          new_pc <= 32'h00000040;
+        end
+        32'h0000000d: begin  //自陷
+          new_pc <= 32'h00000040;
+        end
+        32'h0000000c: begin  //溢出
+          new_pc <= 32'h00000040;
+        end
+        32'h0000000e: begin  //异常返回指令
+          new_pc <= cp0_epc_i;
+        end
+        default: begin
+        end
+      endcase
+    end else if (ex_stall) begin
+      stall <= 6'b001111;  //把EX段和它前面的阶段都暂停
+			flush <= 1'b0;		
+    end else if (id_stall) begin
+      stall <= 6'b000111;  //把ID段和它前面的阶段都暂停
+			flush <= 1'b0;		
+    end else begin
+      stall <= 6'b000000;
+			flush <= 1'b0;		
+			new_pc <= `zeroword;		
+    end 
+  end
+endmodule  //ctrl

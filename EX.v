@@ -10,6 +10,8 @@ module EX (
     input wire [    `RegBus] inst_i,
     input wire [`RegAddrBus] w_addr_i,
     input wire               we_i,
+    input wire [       31:0] excepttype_i,
+    input wire [    `RegBus] current_inst_address_i,
 
     //HILO模块传来的HI、LO寄存器的值
     input wire [`RegBus] hi_i,
@@ -83,17 +85,24 @@ module EX (
     output wire [  `RegBus] mem_addr_o,
     output wire [  `RegBus] reg2_o,
 
+    //当前EX段的指令是否位于延迟槽
+    output wire is_in_delayslot_o,
+
+    output wire [   31:0] excepttype_o,
+    output wire [`RegBus] current_inst_address_o,
+
     output reg stallreq  //暂停请求
 );
 
-  //aluop_o传递到访存阶段，用于加载、存储指令
-  assign aluop_o    = aluop;
+  reg trapassert;  //是否有自陷异常
+  reg ovassert;  //是否有溢出异常
 
-  //mem_addr传递到访存阶段，是加载、存储指令对应的存储器地址
-  assign mem_addr_o = reg1 + {{16{inst_i[15]}}, inst_i[15:0]};
-
-  //将两个操作数也传递到访存阶段，也是为记载、存储指令准备的
-  assign reg2_o     = reg2;
+  assign excepttype_o           = {excepttype_i[31:12], ovassert, trapassert, excepttype_i[9:8], 8'h00};
+  assign is_in_delayslot_o      = is_in_delayslot_i;
+  assign current_inst_address_o = current_inst_address_i;
+  assign aluop_o                = aluop;
+  assign mem_addr_o             = reg1 + {{16{inst_i[15]}}, inst_i[15:0]};
+  assign reg2_o                 = reg2;
 
   reg [`RegBus] HI;  //保存HI的最新值
   reg [`RegBus] LO;  //保存LO的最新值
@@ -119,16 +128,20 @@ module EX (
   wire [`RegBus] reg1_not;  //第一个操作数的反码
   wire [`RegBus] sum_res;  //保存加法结果
 
-  //减法或符号比较运算，则reg2_mux就等于第二个操作数的补码
-  assign reg2_mux = ((aluop == `EXE_SUB_OP) || (aluop == `EXE_SUBU_OP) || (aluop == `EXE_SLT_OP)) ? (~reg2) + 1 : reg2;  //否则等于第二个操作数
+  //若为有符号自陷、减法或符号比较运算，则reg2_mux就等于第二个操作数的补码
+  assign reg2_mux = ((aluop == `EXE_SUB_OP) || (aluop == `EXE_SUBU_OP) || (aluop == `EXE_SLT_OP) || (aluop == `EXE_TLT_OP) || (aluop == `EXE_TLTI_OP) || (aluop == `EXE_TGE_OP) || (aluop == `EXE_TGEI_OP)) ? (~reg2) + 1 : reg2;  //否则等于第二个操作数
+
   assign sum_res = reg1 + reg2_mux;  //加、减、符号比较运算的结果
+
   assign ov_sum  = ((!reg1[31] && !reg2_mux[31])&& sum_res[31])||//两正之和得负数，溢出
                      ((reg1[31]  && reg2_mux[31]) && !sum_res[31]);//两负之和得正数，溢出
-  assign reg1_lt_reg2 = (aluop == `EXE_SLT_OP) ?  //若为有符号比较
+
+  assign reg1_lt_reg2 = ((aluop == `EXE_SLT_OP) || (aluop == `EXE_TLT_OP) || (aluop == `EXE_TLTI_OP) || (aluop == `EXE_TGE_OP) || (aluop == `EXE_TGEI_OP)) ?  //若为有符号比较,或者自陷指令
       ((reg1[31] && !reg2[31]) ||  //1负2正，1小于2
       (!reg1[31] && !reg2[31] && sum_res[31]) ||  //两正之差为负，1小于2
       (reg1[31] && reg2[31] && sum_res[31])) :  //两负之差为负，1小于2
       (reg1 < reg2);  //无符号比较就直接比较得出结果
+
   assign reg1_not = ~reg1;  //reg1逐位取反
 
   //乘法运算
@@ -237,6 +250,36 @@ module EX (
     end
   end
 
+  //判断是否发生自陷异常
+  always @(*) begin
+    trapassert <= `TrapNotAssert;
+    case (aluop)
+      `EXE_TEQ_OP, `EXE_TEQI_OP: begin
+        if (reg1 == reg2) begin
+          trapassert <= `TrapAssert;
+        end
+      end
+      `EXE_TGE_OP, `EXE_TGEI_OP, `EXE_TGEIU_OP, `EXE_TGEU_OP: begin
+        if (~reg1_lt_reg2) begin
+          trapassert <= `TrapAssert;
+        end
+      end
+      `EXE_TLT_OP, `EXE_TLTI_OP, `EXE_TLTIU_OP, `EXE_TLTU_OP: begin
+        if (reg1_lt_reg2) begin
+          trapassert <= `TrapAssert;
+        end
+      end
+      `EXE_TNE_OP, `EXE_TNEI_OP: begin
+        if (reg1 != reg2) begin
+          trapassert <= `TrapAssert;
+        end
+      end
+      default: begin
+        trapassert <= `TrapNotAssert;
+      end
+    endcase
+  end
+
   //暂停流水线
   always @(*) begin
     stallreq = stallreq_m || stallreq_d;
@@ -246,9 +289,11 @@ module EX (
   always @(*) begin
     w_addr_o <= w_addr_i;
     if (((aluop == `EXE_ADD_OP) || (aluop == `EXE_ADDI_OP) || (aluop == `EXE_SUB_OP)) && ov_sum) begin
-      we_o <= `writeDisable;  //有溢出，不写啦
+      we_o     <= `writeDisable;  //有溢出，不写啦
+      ovassert <= 1'b1;  //溢出异常发生
     end else begin
-      we_o <= we_i;
+      we_o     <= we_i;
+      ovassert <= 1'b0;
     end
     if (rst) begin
       w_data_o <= `zeroword;
@@ -294,12 +339,12 @@ module EX (
           w_data_o <= mulres[31:0];
         end
         `EXE_MFC0_OP: begin
-          cp0_reg_read_addr_o <= inst_i[15:11];//要读的cp0里的地址
-          w_data_o            <= cp0_reg_data_i;//读来的数据
+          cp0_reg_read_addr_o <= inst_i[15:11];  //要读的cp0里的地址
+          w_data_o            <= cp0_reg_data_i;  //读来的数据
           if (mem_cp0_reg_we == `writeEnable && mem_cp0_reg_write_addr == inst_i[15:11]) begin
-            w_data_o <= mem_cp0_reg_data;//和MEM段有数据相关喔
+            w_data_o <= mem_cp0_reg_data;  //和MEM段有数据相关喔
           end else if (wb_cp0_reg_we == `writeEnable && wb_cp0_reg_write_addr == inst_i[15:11]) begin
-            w_data_o <= wb_cp0_reg_data;//和WB段有数据相关喔
+            w_data_o <= wb_cp0_reg_data;  //和WB段有数据相关喔
           end
         end
         `EXE_CLZ_OP: begin  //计数clz
@@ -413,19 +458,19 @@ module EX (
     end
   end
 
-  always @ (*) begin
-		if(rst == `RstEnable) begin
-			cp0_reg_write_addr_o <= 5'b00000;
-			cp0_reg_we_o <= `writeDisable;
-			cp0_reg_data_o <= `zeroword;
-		end else if(aluop == `EXE_MTC0_OP) begin
-			cp0_reg_write_addr_o <= inst_i[15:11];
-			cp0_reg_we_o <= `writeEnable;
-			cp0_reg_data_o <= reg1;
-	  end else begin
-			cp0_reg_write_addr_o <= 5'b00000;
-			cp0_reg_we_o <= `writeDisable;
-			cp0_reg_data_o <= `zeroword;
-		end				
-	end		
+  always @(*) begin
+    if (rst == `RstEnable) begin
+      cp0_reg_write_addr_o <= 5'b00000;
+      cp0_reg_we_o         <= `writeDisable;
+      cp0_reg_data_o       <= `zeroword;
+    end else if (aluop == `EXE_MTC0_OP) begin
+      cp0_reg_write_addr_o <= inst_i[15:11];
+      cp0_reg_we_o         <= `writeEnable;
+      cp0_reg_data_o       <= reg1;
+    end else begin
+      cp0_reg_write_addr_o <= 5'b00000;
+      cp0_reg_we_o         <= `writeDisable;
+      cp0_reg_data_o       <= `zeroword;
+    end
+  end
 endmodule

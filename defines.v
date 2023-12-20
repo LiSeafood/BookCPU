@@ -104,6 +104,7 @@
 `define EXE_SWR  6'b101110
 
 `define EXE_SYSCALL 6'b001100
+`define EXE_BREAK 6'b001101
    
 `define EXE_TEQ 6'b110100
 `define EXE_TEQI 5'b01100

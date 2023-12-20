@@ -3,6 +3,7 @@ module if_id (
     input wire       clk,
     input wire       rst,
     input wire [5:0] stall,
+    input wire       flush,
 
     //来自IF的pc信号
     input wire [`InstAddrBus] if_pc,
@@ -16,7 +17,7 @@ module if_id (
 );
 
   always @(posedge clk) begin
-    if (rst || (stall[1] && !stall[2])) begin  //复位或暂停时
+    if (rst || flush || (stall[1] && !stall[2])) begin  //复位、异常或暂停时
       id_pc   <= `zeroword;  //pc为0
       id_inst <= `zeroword;  //指令为空
     end else if (!stall[1]) begin  //其余非暂停时刻向下传递数据

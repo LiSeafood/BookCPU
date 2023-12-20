@@ -1,9 +1,10 @@
 `include "defines.v"
 
 module id_ex (
-    input wire    clk,
-    input   wire    rst,
-    input  wire [5:0]    stall,
+    input wire       clk,
+    input wire       rst,
+    input wire [5:0] stall,
+    input wire       flush,
 
     //从译码阶段传递的信息
     input wire [  `AluOpBus] id_aluop,
@@ -16,6 +17,8 @@ module id_ex (
     input wire               id_is_in_delayslot,
     input wire               next_inst_in_delayslot_i,
     input wire [    `RegBus] id_inst,
+    input wire [    `RegBus] id_current_inst_address,
+    input wire [       31:0] id_excepttype,
 
 
     //传递到执行阶段的信息
@@ -28,42 +31,50 @@ module id_ex (
     output reg [    `RegBus] ex_link_address,
     output reg               ex_is_in_delayslot,
     output reg               is_in_delayslot_o,
-    output reg [    `RegBus] ex_inst
+    output reg [    `RegBus] ex_inst,
+    output reg [       31:0] ex_excepttype,
+    output reg [    `RegBus] ex_current_inst_address
 );
 
   always @(posedge clk) begin
-    if (rst) begin  //传递空信号
-      ex_aluop <= `EXE_NOP_OP;
-      ex_alusel <= `EXE_RES_NOP;
-      ex_reg1 <= `zeroword;
-      ex_reg2 <= `zeroword;
-      ex_wd <= `NOPRegAddr;
-      ex_wreg <= `writeDisable;
-      ex_link_address <= `zeroword;
-      ex_is_in_delayslot <= `NotInDelaySlot;
-      is_in_delayslot_o <= `NotInDelaySlot;
-	  ex_inst<=`zeroword;
+    if (rst || flush) begin  //传递空信号
+      ex_aluop                <= `EXE_NOP_OP;
+      ex_alusel               <= `EXE_RES_NOP;
+      ex_reg1                 <= `zeroword;
+      ex_reg2                 <= `zeroword;
+      ex_wd                   <= `NOPRegAddr;
+      ex_wreg                 <= `writeDisable;
+      ex_link_address         <= `zeroword;
+      ex_is_in_delayslot      <= `NotInDelaySlot;
+      is_in_delayslot_o       <= `NotInDelaySlot;
+      ex_inst                 <= `zeroword;
+      ex_excepttype           <= `zeroword;
+      ex_current_inst_address <= `zeroword;
     end else if (stall[2] == `Stop && stall[3] == `NoStop) begin
-      ex_aluop <= `EXE_NOP_OP;
-      ex_alusel <= `EXE_RES_NOP;
-      ex_reg1 <= `zeroword;
-      ex_reg2 <= `zeroword;
-      ex_wd <= `NOPRegAddr;
-      ex_wreg <= `writeDisable;
-      ex_link_address <= `zeroword;
-      ex_is_in_delayslot <= `NotInDelaySlot;
-	  ex_inst<=`zeroword;
+      ex_aluop                <= `EXE_NOP_OP;
+      ex_alusel               <= `EXE_RES_NOP;
+      ex_reg1                 <= `zeroword;
+      ex_reg2                 <= `zeroword;
+      ex_wd                   <= `NOPRegAddr;
+      ex_wreg                 <= `writeDisable;
+      ex_link_address         <= `zeroword;
+      ex_is_in_delayslot      <= `NotInDelaySlot;
+      ex_inst                 <= `zeroword;
+      ex_excepttype           <= `zeroword;
+      ex_current_inst_address <= `zeroword;
     end else if (!stall[2]) begin  //否则向下传递
-      ex_aluop <= id_aluop;
-      ex_alusel <= id_alusel;
-      ex_reg1 <= id_reg1;
-      ex_reg2 <= id_reg2;
-      ex_wd <= id_wd;
-      ex_wreg <= id_wreg;
-      ex_link_address <= id_link_address;
-      ex_is_in_delayslot <= id_is_in_delayslot;
-      is_in_delayslot_o <= next_inst_in_delayslot_i;
-	  ex_inst<=id_inst;
+      ex_aluop                <= id_aluop;
+      ex_alusel               <= id_alusel;
+      ex_reg1                 <= id_reg1;
+      ex_reg2                 <= id_reg2;
+      ex_wd                   <= id_wd;
+      ex_wreg                 <= id_wreg;
+      ex_link_address         <= id_link_address;
+      ex_is_in_delayslot      <= id_is_in_delayslot;
+      is_in_delayslot_o       <= next_inst_in_delayslot_i;
+      ex_inst                 <= id_inst;
+      ex_excepttype           <= id_excepttype;
+      ex_current_inst_address <= id_current_inst_address;
     end  //其余情况保持寄存器不变
   end
 

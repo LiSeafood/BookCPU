@@ -11,7 +11,10 @@ module cp0 (
     input wire [    4:0] raddr_i,
     input wire [`RegBus] data_i,
 
-    input wire [5:0] int_i,  //6个外部硬件的中断输入
+    input wire [    5:0] int_i,                //6个外部硬件的中断输入
+    input wire [   31:0] excepttype_i,         //最终的异常类型
+    input wire [`RegBus] current_inst_addr_i,  //发生异常的指令地址
+    input wire           is_in_delayslot_i,    //异常的指令是否在延迟槽
 
     output reg [`RegBus] data_o,
     output reg [`RegBus] count_o,    //处理器计数周期
@@ -40,14 +43,14 @@ module cp0 (
       prid_o      <= 32'b00000000010011000000000100000010;
       timer_int_o <= `InterruptNotAssert;
     end else begin
-      count_o        <= count_o + 1;//每周期计数+1
-      cause_o[15:10] <= int_i;//这几位保存外部中断声明
+      count_o        <= count_o + 1;  //每周期计数+1
+      cause_o[15:10] <= int_i;  //这几位保存外部中断声明
       //compare不是0，且count值等于compare值时
       if (compare_o != `zeroword && count_o == compare_o) begin
-        timer_int_o <= `InterruptAssert;//时钟中断发生
+        timer_int_o <= `InterruptAssert;  //时钟中断发生
       end
 
-      if (we_i == `writeEnable) begin
+      if (we_i) begin
         case (waddr_i)
           `CP0_REG_COUNT: begin
             count_o <= data_i;
@@ -71,6 +74,77 @@ module cp0 (
         endcase  //case addr_i
       end
 
+      case (excepttype_i)
+        32'h00000001: begin
+          if (is_in_delayslot_i == `InDelaySlot) begin
+            epc_o       <= current_inst_addr_i - 4;
+            cause_o[31] <= 1'b1;
+          end else begin
+            epc_o       <= current_inst_addr_i;
+            cause_o[31] <= 1'b0;
+          end
+          status_o[1]  <= 1'b1;
+          cause_o[6:2] <= 5'b00000;
+
+        end
+        32'h00000008: begin
+          if (status_o[1] == 1'b0) begin
+            if (is_in_delayslot_i == `InDelaySlot) begin
+              epc_o       <= current_inst_addr_i - 4;
+              cause_o[31] <= 1'b1;
+            end else begin
+              epc_o       <= current_inst_addr_i;
+              cause_o[31] <= 1'b0;
+            end
+          end
+          status_o[1]  <= 1'b1;
+          cause_o[6:2] <= 5'b01000;
+        end
+        32'h0000000a: begin
+          if (status_o[1] == 1'b0) begin
+            if (is_in_delayslot_i == `InDelaySlot) begin
+              epc_o       <= current_inst_addr_i - 4;
+              cause_o[31] <= 1'b1;
+            end else begin
+              epc_o       <= current_inst_addr_i;
+              cause_o[31] <= 1'b0;
+            end
+          end
+          status_o[1]  <= 1'b1;
+          cause_o[6:2] <= 5'b01010;
+        end
+        32'h0000000d: begin
+          if (status_o[1] == 1'b0) begin
+            if (is_in_delayslot_i == `InDelaySlot) begin
+              epc_o       <= current_inst_addr_i - 4;
+              cause_o[31] <= 1'b1;
+            end else begin
+              epc_o       <= current_inst_addr_i;
+              cause_o[31] <= 1'b0;
+            end
+          end
+          status_o[1]  <= 1'b1;
+          cause_o[6:2] <= 5'b01101;
+        end
+        32'h0000000c: begin
+          if (status_o[1] == 1'b0) begin
+            if (is_in_delayslot_i == `InDelaySlot) begin
+              epc_o       <= current_inst_addr_i - 4;
+              cause_o[31] <= 1'b1;
+            end else begin
+              epc_o       <= current_inst_addr_i;
+              cause_o[31] <= 1'b0;
+            end
+          end
+          status_o[1]  <= 1'b1;
+          cause_o[6:2] <= 5'b01100;
+        end
+        32'h0000000e: begin
+          status_o[1] <= 1'b0;
+        end
+        default: begin
+        end
+      endcase
 
     end  //if
   end  //always

@@ -6,6 +6,8 @@ module IF (
     input wire [    5:0] stall,   //暂停信号
     input wire           branch,  //是否转移
     input wire [`RegBus] b_addr,  //转移地址
+    input wire           flush,   //流水线清除信号
+    input wire [`RegBus] new_pc,  //异常处理例程地址
 
     output reg [`InstAddrBus] pc,
     output reg                ce
@@ -14,8 +16,10 @@ module IF (
   always @(posedge clk) begin
     if (!ce) begin
       pc <= 32'hbfc00000;
-    end else if (!stall[0]) begin
-      if (branch) begin
+    end else if (flush) begin  //异常发生了
+      pc <= new_pc;
+    end else if (!stall[0]) begin//不是暂停
+      if (branch) begin  //转移
         pc <= b_addr;
       end else begin
         pc <= pc + 4'h4;  //pc每周期+4
@@ -30,5 +34,5 @@ module IF (
       ce <= 1'b1;  //指令存储器可用
     end
   end
-  
+
 endmodule
