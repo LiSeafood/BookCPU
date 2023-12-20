@@ -18,7 +18,7 @@ module min_sopc_tb ();
   initial begin
     rst = `RstEnable;
     #195 rst = `RstDisable;
-    #2005 $stop;
+    #10005 $stop;
   end
 
   min_sopc min_sopc0 (

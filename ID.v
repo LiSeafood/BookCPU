@@ -197,7 +197,7 @@ module ID (
                   alusel  <= `EXE_RES_LOGIC;  //逻辑运算
                   rs_read <= 1'b1;  //需读rs
                   rt_read <= 1'b1;  //需读rt
-                  valid = `InstValid;  //指令有效
+                  valid   <= `InstValid;  //指令有效
                 end
                 `EXE_AND: begin
                   we      <= `writeEnable;
@@ -205,7 +205,7 @@ module ID (
                   alusel  <= `EXE_RES_LOGIC;
                   rs_read <= 1'b1;
                   rt_read <= 1'b1;
-                  valid = `InstValid;
+                  valid   <= `InstValid;
                 end
                 `EXE_XOR: begin
                   we      <= `writeEnable;
@@ -213,7 +213,7 @@ module ID (
                   alusel  <= `EXE_RES_LOGIC;
                   rs_read <= 1'b1;
                   rt_read <= 1'b1;
-                  valid = `InstValid;
+                  valid   <= `InstValid;
                 end
                 `EXE_NOR: begin
                   we      <= `writeEnable;
@@ -221,7 +221,7 @@ module ID (
                   alusel  <= `EXE_RES_LOGIC;
                   rs_read <= 1'b1;
                   rt_read <= 1'b1;
-                  valid = `InstValid;
+                  valid   <= `InstValid;
                 end
                 `EXE_SLLV: begin
                   we      <= `writeEnable;
@@ -229,7 +229,7 @@ module ID (
                   alusel  <= `EXE_RES_SHIFT;  //移位运算
                   rs_read <= 1'b1;
                   rt_read <= 1'b1;
-                  valid = `InstValid;
+                  valid   <= `InstValid;
                 end
                 `EXE_SRLV: begin
                   we      <= `writeEnable;
@@ -237,7 +237,7 @@ module ID (
                   alusel  <= `EXE_RES_SHIFT;
                   rs_read <= 1'b1;
                   rt_read <= 1'b1;
-                  valid = `InstValid;
+                  valid   <= `InstValid;
                 end
                 `EXE_SRAV: begin
                   we      <= `writeEnable;
@@ -245,7 +245,7 @@ module ID (
                   alusel  <= `EXE_RES_SHIFT;
                   rs_read <= 1'b1;
                   rt_read <= 1'b1;
-                  valid = `InstValid;
+                  valid   <= `InstValid;
                 end
                 `EXE_SYNC: begin
                   we      <= `writeEnable;
@@ -253,7 +253,7 @@ module ID (
                   alusel  <= `EXE_RES_NOP;
                   rs_read <= 1'b0;
                   rt_read <= 1'b1;
-                  valid = `InstValid;
+                  valid   <= `InstValid;
                 end
                 `EXE_MFHI: begin
                   we      <= `writeEnable;
@@ -261,7 +261,7 @@ module ID (
                   alusel  <= `EXE_RES_MOVE;  //移动指令
                   rs_read <= 1'b0;
                   rt_read <= 1'b0;
-                  valid = `InstValid;
+                  valid   <= `InstValid;
                 end
                 `EXE_MFLO: begin
                   we      <= `writeEnable;
@@ -269,26 +269,26 @@ module ID (
                   alusel  <= `EXE_RES_MOVE;
                   rs_read <= 1'b0;
                   rt_read <= 1'b0;
-                  valid = `InstValid;
+                  valid   <= `InstValid;
                 end
                 `EXE_MTHI: begin
                   aluop   <= `EXE_MTHI_OP;
                   rs_read <= 1'b1;
                   rt_read <= 1'b0;
-                  valid = `InstValid;
+                  valid   <= `InstValid;
                 end
                 `EXE_MTLO: begin
                   aluop   <= `EXE_MTLO_OP;
                   rs_read <= 1'b1;
                   rt_read <= 1'b0;
-                  valid = `InstValid;
+                  valid   <= `InstValid;
                 end
                 `EXE_MOVN: begin
                   aluop   <= `EXE_MOVN_OP;
                   alusel  <= `EXE_RES_MOVE;
                   rs_read <= 1'b1;
                   rt_read <= 1'b1;
-                  valid = `InstValid;
+                  valid   <= `InstValid;
                   if (reg2 != `zeroword) begin  //reg2应该就是读到rt的值
                     we <= `writeEnable;
                   end else begin
@@ -300,7 +300,7 @@ module ID (
                   alusel  <= `EXE_RES_MOVE;
                   rs_read <= 1'b1;
                   rt_read <= 1'b1;
-                  valid = `InstValid;
+                  valid   <= `InstValid;
                   if (reg2 == `zeroword) begin
                     we <= `writeEnable;
                   end else begin
@@ -313,7 +313,7 @@ module ID (
                   alusel  <= `EXE_RES_ARITHMETIC;  //算术指令
                   rs_read <= 1'b1;
                   rt_read <= 1'b1;
-                  valid = `InstValid;
+                  valid   <= `InstValid;
                 end
                 `EXE_SLTU: begin
                   we      <= `writeEnable;
@@ -321,7 +321,7 @@ module ID (
                   alusel  <= `EXE_RES_ARITHMETIC;
                   rs_read <= 1'b1;
                   rt_read <= 1'b1;
-                  valid = `InstValid;
+                  valid   <= `InstValid;
                 end
                 `EXE_ADD: begin
                   we      <= `writeEnable;
@@ -329,7 +329,7 @@ module ID (
                   alusel  <= `EXE_RES_ARITHMETIC;
                   rs_read <= 1'b1;
                   rt_read <= 1'b1;
-                  valid = `InstValid;
+                  valid   <= `InstValid;
                 end
                 `EXE_ADDU: begin
                   we      <= `writeEnable;
@@ -337,7 +337,7 @@ module ID (
                   alusel  <= `EXE_RES_ARITHMETIC;
                   rs_read <= 1'b1;
                   rt_read <= 1'b1;
-                  valid = `InstValid;
+                  valid   <= `InstValid;
                 end
                 `EXE_SUB: begin
                   we      <= `writeEnable;
@@ -345,7 +345,7 @@ module ID (
                   alusel  <= `EXE_RES_ARITHMETIC;
                   rs_read <= 1'b1;
                   rt_read <= 1'b1;
-                  valid = `InstValid;
+                  valid   <= `InstValid;
                 end
                 `EXE_SUBU: begin
                   we      <= `writeEnable;
@@ -353,7 +353,7 @@ module ID (
                   alusel  <= `EXE_RES_ARITHMETIC;
                   rs_read <= 1'b1;
                   rt_read <= 1'b1;
-                  valid = `InstValid;
+                  valid   <= `InstValid;
                 end
                 `EXE_MULT: begin
                   we      <= `writeEnable;
@@ -361,7 +361,7 @@ module ID (
                   alusel  <= `EXE_RES_ARITHMETIC;
                   rs_read <= 1'b1;
                   rt_read <= 1'b1;
-                  valid = `InstValid;
+                  valid   <= `InstValid;
                 end
                 `EXE_MULTU: begin
                   we      <= `writeEnable;
@@ -369,19 +369,19 @@ module ID (
                   alusel  <= `EXE_RES_ARITHMETIC;
                   rs_read <= 1'b1;
                   rt_read <= 1'b1;
-                  valid = `InstValid;
+                  valid   <= `InstValid;
                 end
                 `EXE_DIV: begin
                   aluop   <= `EXE_DIV_OP;
                   rs_read <= 1'b1;
                   rt_read <= 1'b1;
-                  valid = `InstValid;
+                  valid   <= `InstValid;
                 end
                 `EXE_DIVU: begin
                   aluop   <= `EXE_DIVU_OP;
                   rs_read <= 1'b1;
                   rt_read <= 1'b1;
-                  valid = `InstValid;
+                  valid   <= `InstValid;
                 end
                 `EXE_JR: begin
                   we           <= `writeDisable;
@@ -393,7 +393,7 @@ module ID (
                   b_addr       <= reg1;
                   branch       <= `Branch;
                   next_delay_o <= `InDelaySlot;
-                  valid = `InstValid;
+                  valid        <= `InstValid;
                 end
                 `EXE_JALR: begin
                   we           <= `writeEnable;
@@ -405,7 +405,7 @@ module ID (
                   b_addr       <= reg1;
                   branch       <= `Branch;
                   next_delay_o <= `InDelaySlot;
-                  valid = `InstValid;
+                  valid        <= `InstValid;
                 end
                 default: begin
 
@@ -426,7 +426,7 @@ module ID (
               alusel  <= `EXE_RES_ARITHMETIC;
               rs_read <= 1'b1;
               rt_read <= 1'b0;
-              valid = `InstValid;
+              valid   <= `InstValid;
             end
             `EXE_CLO: begin
               we      <= `writeEnable;
@@ -434,7 +434,7 @@ module ID (
               alusel  <= `EXE_RES_ARITHMETIC;
               rs_read <= 1'b1;
               rt_read <= 1'b0;
-              valid = `InstValid;
+              valid   <= `InstValid;
             end
             `EXE_MUL: begin
               we      <= `writeEnable;
@@ -442,31 +442,31 @@ module ID (
               alusel  <= `EXE_RES_ARITHMETIC;
               rs_read <= 1'b1;
               rt_read <= 1'b1;
-              valid = `InstValid;
+              valid   <= `InstValid;
             end
             `EXE_MADD: begin
               aluop   <= `EXE_MADD_OP;
               rs_read <= 1'b1;
               rt_read <= 1'b1;
-              valid = `InstValid;
+              valid   <= `InstValid;
             end
             `EXE_MADDU: begin
               aluop   <= `EXE_MADDU_OP;
               rs_read <= 1'b1;
               rt_read <= 1'b1;
-              valid = `InstValid;
+              valid   <= `InstValid;
             end
             `EXE_MSUB: begin
               aluop   <= `EXE_MSUB_OP;
               rs_read <= 1'b1;
               rt_read <= 1'b1;
-              valid = `InstValid;
+              valid   <= `InstValid;
             end
             `EXE_MSUBU: begin
               aluop   <= `EXE_MSUBU_OP;
               rs_read <= 1'b1;
               rt_read <= 1'b1;
-              valid = `InstValid;
+              valid   <= `InstValid;
             end
             default begin
 
@@ -541,7 +541,7 @@ module ID (
                 next_delay_o <= `InDelaySlot;
                 b_addr       <= pc_plus_4 + imm_sll2_signednext;
               end
-              valid = `InstValid;
+              valid <= `InstValid;
             end
             `EXE_BGEZAL: begin
               we        <= `writeEnable;
@@ -556,7 +556,7 @@ module ID (
                 next_delay_o <= `InDelaySlot;
                 b_addr       <= pc_plus_4 + imm_sll2_signednext;
               end
-              valid = `InstValid;
+              valid <= `InstValid;
             end
             `EXE_BLTZ: begin
               we      <= `writeDisable;
@@ -569,7 +569,7 @@ module ID (
                 next_delay_o <= `InDelaySlot;
                 b_addr       <= pc_plus_4 + imm_sll2_signednext;
               end
-              valid = `InstValid;
+              valid <= `InstValid;
             end
             `EXE_BLTZAL: begin
               we        <= `writeEnable;
@@ -584,7 +584,7 @@ module ID (
                 next_delay_o <= `InDelaySlot;
                 b_addr       <= pc_plus_4 + imm_sll2_signednext;
               end
-              valid = `InstValid;
+              valid <= `InstValid;
             end
             default: begin
 
@@ -601,7 +601,7 @@ module ID (
           branch       <= `Branch;
           next_delay_o <= `InDelaySlot;
           b_addr       <= {pc_plus_4[31:28], inst[25:0], 2'b00};
-          valid = `InstValid;
+          valid        <= `InstValid;
         end
         `EXE_JAL: begin
           we           <= `writeEnable;
@@ -614,7 +614,7 @@ module ID (
           branch       <= `Branch;
           next_delay_o <= `InDelaySlot;
           b_addr       <= {pc_plus_4[31:28], inst[25:0], 2'b00};
-          valid = `InstValid;
+          valid        <= `InstValid;
         end
         `EXE_BEQ: begin
           we      <= `writeDisable;
@@ -627,7 +627,7 @@ module ID (
             next_delay_o <= `InDelaySlot;
             b_addr       <= pc_plus_4 + imm_sll2_signednext;
           end
-          valid = `InstValid;
+          valid <= `InstValid;
         end
         `EXE_BNE: begin
           we      <= `writeDisable;
@@ -640,7 +640,7 @@ module ID (
             next_delay_o <= `InDelaySlot;
             b_addr       <= pc_plus_4 + imm_sll2_signednext;
           end
-          valid = `InstValid;
+          valid <= `InstValid;
         end
         `EXE_BGTZ: begin
           we      <= `writeDisable;
@@ -653,7 +653,7 @@ module ID (
             next_delay_o <= `InDelaySlot;
             b_addr       <= pc_plus_4 + imm_sll2_signednext;
           end
-          valid = `InstValid;
+          valid <= `InstValid;
         end
         `EXE_BLEZ: begin
           we      <= `writeDisable;
@@ -666,7 +666,7 @@ module ID (
             next_delay_o <= `InDelaySlot;
             b_addr       <= pc_plus_4 + imm_sll2_signednext;
           end
-          valid = `InstValid;
+          valid <= `InstValid;
         end
         `EXE_LB: begin
           we      <= `writeEnable;
@@ -798,7 +798,7 @@ module ID (
           rt_read <= 1'b0;  //不用读rt
           imm     <= {16'h0, inst[15:0]};  //无符号扩展立即数
           w_addr  <= inst[20:16];  //结果写进rt
-          valid = `InstValid;  //指令有效
+          valid   <= `InstValid;  //指令有效
         end
         `EXE_ANDI: begin
           we      <= `writeEnable;
@@ -808,7 +808,7 @@ module ID (
           rt_read <= 1'b0;
           imm     <= {16'h0, inst[15:0]};
           w_addr  <= inst[20:16];
-          valid = `InstValid;
+          valid   <= `InstValid;
         end
         `EXE_XORI: begin
           we      <= `writeEnable;
@@ -818,7 +818,7 @@ module ID (
           rt_read <= 1'b0;
           imm     <= {16'h0, inst[15:0]};
           w_addr  <= inst[20:16];
-          valid = `InstValid;
+          valid   <= `InstValid;
         end
         `EXE_LUI: begin
           we      <= `writeEnable;
@@ -828,7 +828,7 @@ module ID (
           rt_read <= 1'b0;
           imm     <= {inst[15:0], 16'h0};  //立即数（左移16位）
           w_addr  <= inst[20:16];
-          valid = `InstValid;
+          valid   <= `InstValid;
         end
         `EXE_PREF: begin
           we      <= `writeDisable;
@@ -836,7 +836,7 @@ module ID (
           alusel  <= `EXE_RES_NOP;
           rs_read <= 1'b0;
           rt_read <= 1'b0;
-          valid = `InstValid;
+          valid   <= `InstValid;
         end
         `EXE_SLTI: begin
           we      <= `writeEnable;
@@ -846,7 +846,7 @@ module ID (
           rt_read <= 1'b0;
           imm     <= {{16{inst[15]}}, inst[15:0]};  //有符号扩展立即数
           w_addr  <= inst[20:16];
-          valid = `InstValid;
+          valid   <= `InstValid;
         end
         `EXE_SLTIU: begin
           we      <= `writeEnable;
@@ -856,7 +856,7 @@ module ID (
           rt_read <= 1'b0;
           imm     <= {{16{inst[15]}}, inst[15:0]};
           w_addr  <= inst[20:16];
-          valid = `InstValid;
+          valid   <= `InstValid;
         end
         `EXE_ADDI: begin
           we      <= `writeEnable;
@@ -866,7 +866,7 @@ module ID (
           rt_read <= 1'b0;
           imm     <= {{16{inst[15]}}, inst[15:0]};
           w_addr  <= inst[20:16];
-          valid = `InstValid;
+          valid   <= `InstValid;
         end
         `EXE_ADDIU: begin
           we      <= `writeEnable;
@@ -876,7 +876,7 @@ module ID (
           rt_read <= 1'b0;
           imm     <= {{16{inst[15]}}, inst[15:0]};
           w_addr  <= inst[20:16];
-          valid = `InstValid;
+          valid   <= `InstValid;
         end
         default begin
 
@@ -891,7 +891,7 @@ module ID (
           rs_read  <= 1'b0;  //与rs无关
           rt_read  <= 1'b1;
           imm[4:0] <= inst[10:6];  //立即数sa
-          valid = `InstValid;
+          valid    <= `InstValid;
         end else if (op3 == `EXE_SRL) begin
           we       <= `writeEnable;
           aluop    <= `EXE_SRL_OP;  //逻辑右移
@@ -899,7 +899,7 @@ module ID (
           rs_read  <= 1'b0;
           rt_read  <= 1'b1;
           imm[4:0] <= inst[10:6];
-          valid = `InstValid;
+          valid    <= `InstValid;
         end else if (op3 == `EXE_SRA) begin
           we       <= `writeEnable;
           aluop    <= `EXE_SRA_OP;  //算术右移
@@ -907,7 +907,7 @@ module ID (
           rs_read  <= 1'b0;
           rt_read  <= 1'b1;
           imm[4:0] <= inst[10:6];
-          valid = `InstValid;
+          valid    <= `InstValid;
         end
       end
 
